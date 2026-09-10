@@ -34,11 +34,11 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
     <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-6 mt-8">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Settings2 className="w-6 h-6 text-primary" /> 
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Settings2 className="w-5 h-5 text-primary" /> 
             Monte Carlo Risk Simulation
           </h2>
-          <p className="text-base text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-1">
             Simulating 2,000 scenarios by varying revenues and variable costs (fixed costs remain constant).
           </p>
         </div>
@@ -69,37 +69,37 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
         <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5">
           <div className="flex items-center gap-2 text-red-500 mb-2">
             <AlertTriangle className="w-4 h-4" />
-            <h3 className="font-semibold text-base">P10 Pessimistic</h3>
+            <h3 className="font-semibold text-sm">P10 Pessimistic</h3>
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold">{formatCurrency(p10, investment.currency)}</p>
-            <p className="text-base font-medium text-muted-foreground">ROI: {getRoiStr(p10)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(p10, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p10)}</p>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">90% chance of exceeding this</p>
+          <p className="text-xs text-muted-foreground mt-1">90% chance of exceeding this</p>
         </div>
 
         <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
           <div className="flex items-center gap-2 text-blue-500 mb-2">
             <TrendingUp className="w-4 h-4" />
-            <h3 className="font-semibold text-base">P50 Base Case</h3>
+            <h3 className="font-semibold text-sm">P50 Base Case</h3>
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold">{formatCurrency(p50, investment.currency)}</p>
-            <p className="text-base font-medium text-muted-foreground">ROI: {getRoiStr(p50)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(p50, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p50)}</p>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">Median expected outcome</p>
+          <p className="text-xs text-muted-foreground mt-1">Median expected outcome</p>
         </div>
 
         <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
           <div className="flex items-center gap-2 text-emerald-500 mb-2">
             <TrendingUp className="w-4 h-4" />
-            <h3 className="font-semibold text-base">P90 Optimistic</h3>
+            <h3 className="font-semibold text-sm">P90 Optimistic</h3>
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold">{formatCurrency(p90, investment.currency)}</p>
-            <p className="text-base font-medium text-muted-foreground">ROI: {getRoiStr(p90)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(p90, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p90)}</p>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">10% chance of reaching this</p>
+          <p className="text-xs text-muted-foreground mt-1">10% chance of reaching this</p>
         </div>
       </div>
 

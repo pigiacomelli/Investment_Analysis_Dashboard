@@ -84,21 +84,21 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
   const KpiCard = ({ title, value, subtext, description, icon: Icon, trend }: any) => (
     <div className="bg-card border border-border p-5 rounded-xl shadow-sm flex items-start justify-between">
       <div>
-        <p className="text-lg font-medium text-foreground/80">{title}</p>
-        <h3 className="text-4xl font-bold mt-2 text-foreground">{value}</h3>
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <h3 className="text-2xl font-bold mt-2">{value}</h3>
         {subtext && (
-          <p className={cn("text-base font-semibold mt-2", trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-foreground/70')}>
+          <p className={cn("text-xs font-medium mt-1", trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground')}>
             {subtext}
           </p>
         )}
         {description && (
-          <p className="text-sm font-mono mt-3 bg-muted/60 p-2 rounded-md text-foreground/80 border border-border/50">
+          <p className="text-[10px] font-mono mt-2 bg-muted/50 p-1.5 rounded-md text-muted-foreground border border-border/50">
             {description}
           </p>
         )}
       </div>
       <div className={cn("p-2 rounded-lg", trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary')}>
-        <Icon className="w-6 h-6" />
+        <Icon className="w-5 h-5" />
       </div>
     </div>
   );
@@ -134,18 +134,18 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
           </form>
         ) : (
           <div>
-            <h1 className="text-4xl font-bold tracking-tight flex items-center gap-2 group">
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 group">
               {investment.name}
               <button onClick={() => setIsEditingProject(true)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all p-1">
-                <Edit2 className="w-5 h-5" />
+                <Edit2 className="w-4 h-4" />
               </button>
             </h1>
-            <p className="text-lg text-muted-foreground mt-2">{investment.category} • {investment.currency} • Started {new Date(investment.startDate).toLocaleDateString()}</p>
+            <p className="text-muted-foreground">{investment.category} • {investment.currency} • Started {new Date(investment.startDate).toLocaleDateString()}</p>
           </div>
         )}
         
         {!isEditingProject && (
-          <button onClick={handleDeleteProject} className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-md font-medium text-base transition-colors border border-destructive/20">
+          <button onClick={handleDeleteProject} className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-md font-medium text-sm transition-colors border border-destructive/20">
             <Trash2 className="w-4 h-4" /> Delete Project
           </button>
         )}
@@ -194,8 +194,8 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-base text-left">
-              <thead className="text-sm uppercase tracking-wide text-muted-foreground bg-muted/50">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs uppercase text-muted-foreground bg-muted/50">
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Category</th>
@@ -211,11 +211,11 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                     <td colSpan={6} className="p-0">
                       <form onSubmit={(e) => handleUpdateRevenue(e, rev.id)} className="flex w-full">
                         <div className="flex-1 grid grid-cols-5 divide-x divide-border">
-                          <input name="name" required defaultValue={rev.name} className="px-4 py-3 bg-transparent border-none outline-none text-base focus:bg-background transition-colors" />
-                          <input name="category" required defaultValue={rev.category} className="px-4 py-3 bg-transparent border-none outline-none text-base focus:bg-background transition-colors" />
-                          <input type="date" name="date" required defaultValue={new Date(rev.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors" />
-                          <input type="number" step="0.01" name="projectedAmount" required defaultValue={rev.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
-                          <input type="number" step="0.01" name="actualAmount" defaultValue={rev.actualAmount || ''} className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
+                          <input name="name" required defaultValue={rev.name} className="px-4 py-3 bg-transparent border-none outline-none text-sm focus:bg-background transition-colors" />
+                          <input name="category" required defaultValue={rev.category} className="px-4 py-3 bg-transparent border-none outline-none text-sm focus:bg-background transition-colors" />
+                          <input type="date" name="date" required defaultValue={new Date(rev.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
+                          <input type="number" step="0.01" name="projectedAmount" required defaultValue={rev.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
+                          <input type="number" step="0.01" name="actualAmount" defaultValue={rev.actualAmount || ''} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
                         </div>
                         <div className="flex w-24 border-l border-border">
                           <button type="button" onClick={() => setEditingId(null)} className="flex-1 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"><X className="w-4 h-4" /></button>
@@ -243,13 +243,13 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                   <td colSpan={6} className="p-0">
                     <form onSubmit={handleAddRevenue} className="flex w-full">
                       <div className="flex-1 grid grid-cols-5 divide-x divide-border">
-                        <input name="name" required placeholder="New Revenue..." className="px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
-                        <input name="category" required placeholder="Category" className="px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
-                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors" />
-                        <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
-                        <input type="number" step="0.01" name="actualAmount" placeholder="Act $" className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
+                        <input name="name" required placeholder="New Revenue..." className="px-4 py-3 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
+                        <input name="category" required placeholder="Category" className="px-4 py-3 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
+                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
+                        <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
+                        <input type="number" step="0.01" name="actualAmount" placeholder="Act $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
                       </div>
-                      <button type="submit" className="px-6 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 font-medium text-base flex items-center justify-center transition-colors border-l border-border w-24">
+                      <button type="submit" className="px-6 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 font-medium text-sm flex items-center justify-center transition-colors border-l border-border w-24">
                         Add
                       </button>
                     </form>
@@ -268,8 +268,8 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-base text-left">
-              <thead className="text-sm uppercase tracking-wide text-muted-foreground bg-muted/50">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs uppercase text-muted-foreground bg-muted/50">
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Category</th>
@@ -286,17 +286,17 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                     <td colSpan={7} className="p-0">
                       <form onSubmit={(e) => handleUpdateCost(e, cost.id, 'FIXED')} className="flex w-full">
                         <div className="flex-1 grid grid-cols-6 divide-x divide-border">
-                          <input name="name" required defaultValue={cost.name} className="px-4 py-3 bg-transparent border-none outline-none text-base focus:bg-background transition-colors" />
-                          <input name="category" required defaultValue={cost.category} className="px-4 py-3 bg-transparent border-none outline-none text-base focus:bg-background transition-colors" />
-                          <select name="recurrence" required defaultValue={cost.recurrence} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors appearance-none">
+                          <input name="name" required defaultValue={cost.name} className="px-4 py-3 bg-transparent border-none outline-none text-sm focus:bg-background transition-colors" />
+                          <input name="category" required defaultValue={cost.category} className="px-4 py-3 bg-transparent border-none outline-none text-sm focus:bg-background transition-colors" />
+                          <select name="recurrence" required defaultValue={cost.recurrence} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors appearance-none">
                             <option value="MONTHLY">Monthly</option>
                             <option value="YEARLY">Yearly</option>
                             <option value="ONE_TIME">One Time</option>
                             <option value="WEEKLY">Weekly</option>
                           </select>
-                          <input type="date" name="date" required defaultValue={new Date(cost.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors" />
-                          <input type="number" step="0.01" name="projectedAmount" required defaultValue={cost.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
-                          <input type="number" step="0.01" name="actualAmount" defaultValue={cost.actualAmount || ''} className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
+                          <input type="date" name="date" required defaultValue={new Date(cost.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
+                          <input type="number" step="0.01" name="projectedAmount" required defaultValue={cost.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
+                          <input type="number" step="0.01" name="actualAmount" defaultValue={cost.actualAmount || ''} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
                         </div>
                         <div className="flex w-24 border-l border-border">
                           <button type="button" onClick={() => setEditingId(null)} className="flex-1 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"><X className="w-4 h-4" /></button>
@@ -325,19 +325,19 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                   <td colSpan={7} className="p-0">
                     <form onSubmit={(e) => handleAddCost(e, 'FIXED')} className="flex w-full">
                       <div className="flex-1 grid grid-cols-6 divide-x divide-border">
-                        <input name="name" required placeholder="New Fixed Cost..." className="px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
-                        <input name="category" required placeholder="Category" className="px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
-                        <select name="recurrence" required className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors appearance-none">
+                        <input name="name" required placeholder="New Fixed Cost..." className="px-4 py-3 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
+                        <input name="category" required placeholder="Category" className="px-4 py-3 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
+                        <select name="recurrence" required className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors appearance-none">
                           <option value="MONTHLY">Monthly</option>
                           <option value="YEARLY">Yearly</option>
                           <option value="ONE_TIME">One Time</option>
                           <option value="WEEKLY">Weekly</option>
                         </select>
-                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors" />
-                        <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
-                        <input type="number" step="0.01" name="actualAmount" placeholder="Act $" className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
+                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
+                        <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
+                        <input type="number" step="0.01" name="actualAmount" placeholder="Act $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
                       </div>
-                      <button type="submit" className="px-6 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 font-medium text-base flex items-center justify-center transition-colors border-l border-border w-24">
+                      <button type="submit" className="px-6 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 font-medium text-sm flex items-center justify-center transition-colors border-l border-border w-24">
                         Add
                       </button>
                     </form>
@@ -356,8 +356,8 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-base text-left">
-              <thead className="text-sm uppercase tracking-wide text-muted-foreground bg-muted/50">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs uppercase text-muted-foreground bg-muted/50">
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Category</th>
@@ -374,17 +374,17 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                     <td colSpan={7} className="p-0">
                       <form onSubmit={(e) => handleUpdateCost(e, cost.id, 'VARIABLE')} className="flex w-full">
                         <div className="flex-1 grid grid-cols-6 divide-x divide-border">
-                          <input name="name" required defaultValue={cost.name} className="px-4 py-3 bg-transparent border-none outline-none text-base focus:bg-background transition-colors" />
-                          <input name="category" required defaultValue={cost.category} className="px-4 py-3 bg-transparent border-none outline-none text-base focus:bg-background transition-colors" />
-                          <select name="recurrence" required defaultValue={cost.recurrence} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors appearance-none">
+                          <input name="name" required defaultValue={cost.name} className="px-4 py-3 bg-transparent border-none outline-none text-sm focus:bg-background transition-colors" />
+                          <input name="category" required defaultValue={cost.category} className="px-4 py-3 bg-transparent border-none outline-none text-sm focus:bg-background transition-colors" />
+                          <select name="recurrence" required defaultValue={cost.recurrence} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors appearance-none">
                             <option value="ONE_TIME">One Time</option>
                             <option value="MONTHLY">Monthly</option>
                             <option value="YEARLY">Yearly</option>
                             <option value="WEEKLY">Weekly</option>
                           </select>
-                          <input type="date" name="date" required defaultValue={new Date(cost.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors" />
-                          <input type="number" step="0.01" name="projectedAmount" required defaultValue={cost.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
-                          <input type="number" step="0.01" name="actualAmount" defaultValue={cost.actualAmount || ''} className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
+                          <input type="date" name="date" required defaultValue={new Date(cost.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
+                          <input type="number" step="0.01" name="projectedAmount" required defaultValue={cost.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
+                          <input type="number" step="0.01" name="actualAmount" defaultValue={cost.actualAmount || ''} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
                         </div>
                         <div className="flex w-24 border-l border-border">
                           <button type="button" onClick={() => setEditingId(null)} className="flex-1 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"><X className="w-4 h-4" /></button>
@@ -413,19 +413,19 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                   <td colSpan={7} className="p-0">
                     <form onSubmit={(e) => handleAddCost(e, 'VARIABLE')} className="flex w-full">
                       <div className="flex-1 grid grid-cols-6 divide-x divide-border">
-                        <input name="name" required placeholder="New Variable Cost..." className="px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
-                        <input name="category" required placeholder="Category" className="px-4 py-3 bg-transparent border-none outline-none text-base placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
-                        <select name="recurrence" required className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors appearance-none">
+                        <input name="name" required placeholder="New Variable Cost..." className="px-4 py-3 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
+                        <input name="category" required placeholder="Category" className="px-4 py-3 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50 focus:bg-background transition-colors" />
+                        <select name="recurrence" required className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors appearance-none">
                           <option value="ONE_TIME">One Time</option>
                           <option value="MONTHLY">Monthly</option>
                           <option value="YEARLY">Yearly</option>
                           <option value="WEEKLY">Weekly</option>
                         </select>
-                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-base text-muted-foreground focus:bg-background transition-colors" />
-                        <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
-                        <input type="number" step="0.01" name="actualAmount" placeholder="Act $" className="px-4 py-3 bg-transparent border-none outline-none text-base text-right focus:bg-background transition-colors" />
+                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
+                        <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
+                        <input type="number" step="0.01" name="actualAmount" placeholder="Act $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
                       </div>
-                      <button type="submit" className="px-6 bg-red-500/10 text-red-500 hover:bg-red-500/20 font-medium text-base flex items-center justify-center transition-colors border-l border-border w-24">
+                      <button type="submit" className="px-6 bg-red-500/10 text-red-500 hover:bg-red-500/20 font-medium text-sm flex items-center justify-center transition-colors border-l border-border w-24">
                         Add
                       </button>
                     </form>
