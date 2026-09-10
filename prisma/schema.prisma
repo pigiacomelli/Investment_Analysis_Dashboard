@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Investment {
+  id                String    @id @default(uuid())
+  name              String
+  description       String?
+  category          String
+  status            String    // PLANNED, ACTIVE, COMPLETED, CANCELLED
+  startDate         DateTime
+  endDate           DateTime?
+  initialInvestment Float
+  currency          String    @default("USD")
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  costs                Cost[]
+  revenues             Revenue[]
+  capitalContributions CapitalContribution[]
+}
+
+model Cost {
+  id              String   @id @default(uuid())
+  investmentId    String
+  name            String
+  description     String?
+  category        String
+  costType        String   // FIXED, VARIABLE
+  projectedAmount Float
+  actualAmount    Float
+  recurrence      String   @default("ONE_TIME") // ONE_TIME, WEEKLY, MONTHLY, QUARTERLY, YEARLY
+  date            DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+}
+
+model Revenue {
+  id              String   @id @default(uuid())
+  investmentId    String
+  name            String
+  description     String?
+  category        String
+  projectedAmount Float
+  actualAmount    Float
+  date            DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+}
+
+model CapitalContribution {
+  id           String   @id @default(uuid())
+  investmentId String
+  amount       Float
+  date         DateTime
+  description  String?
+  createdAt    DateTime @default(now())
+
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+}
