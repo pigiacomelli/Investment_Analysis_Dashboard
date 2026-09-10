@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { InvestmentWithDetails, calculateTotalInvestedCapital } from '@/lib/finance';
 import { runMonteCarloSimulation } from '@/lib/finance/monteCarlo';
 import { formatCurrency, formatPercentage } from '@/lib/utils/format';
@@ -9,11 +9,21 @@ import { Settings2, TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react
 
 export function MonteCarloSimulation({ investment }: { investment: InvestmentWithDetails }) {
   const [volatility, setVolatility] = useState<number>(0.20);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Re-run simulation when volatility changes
   const simulation = useMemo(() => {
+    if (!isMounted) return null;
     return runMonteCarloSimulation(investment, volatility, 2000);
-  }, [investment, volatility]);
+  }, [investment, volatility, isMounted]);
+
+  if (!isMounted || !simulation) {
+    return <div className="animate-pulse bg-muted/20 border border-border rounded-xl shadow-sm h-96 mt-8"></div>;
+  }
 
   const { p10, p50, p90, histogram } = simulation;
 
