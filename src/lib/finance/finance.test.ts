@@ -72,14 +72,14 @@ describe('Finance calculations', () => {
   });
 
   it('7. calculates projected and actual ROI', () => {
-    // Cap: 12000
-    // Proj Profit: 11000 -> ROI = (11000 / 12000) * 100 = 91.666...
-    expect(calculateProjectedROI(10000, mockContributions, mockRevenues, mockCosts)).toBeCloseTo(91.666, 2);
-    // Act Profit: 13000 -> ROI = (13000 / 12000) * 100 = 108.333...
-    expect(calculateActualROI(10000, mockContributions, mockRevenues, mockCosts)).toBeCloseTo(108.333, 2);
+    // Proj Costs: 2000
+    // Proj Profit: 11000 -> ROI = (11000 / 2000) * 100 = 550%
+    expect(calculateProjectedROI(10000, mockContributions, mockRevenues, mockCosts)).toBe(550);
+    // Act Profit: 13000 -> ROI = (13000 / 2000) * 100 = 650%
+    expect(calculateActualROI(10000, mockContributions, mockRevenues, mockCosts)).toBe(650);
   });
 
-  it('8. falls back to costs for ROI when capital is zero', () => {
+  it('8. falls back to costs for ROI when capital is zero (same logic as above now)', () => {
     // Proj Profit: 11000, Proj Costs: 2000 -> 11000 / 2000 = 550%
     expect(calculateProjectedROI(0, [], mockRevenues, mockCosts)).toBe(550);
     // Act Profit: 13000, Act Costs: 2000 -> 13000 / 2000 = 650%
@@ -90,7 +90,8 @@ describe('Finance calculations', () => {
     const lowRevenues = [{ projectedAmount: 1000, actualAmount: 500, date: d1 }] as any[];
     expect(calculateProjectedProfit(lowRevenues, mockCosts)).toBe(-1000);
     expect(calculateActualProfit(lowRevenues, mockCosts)).toBe(-1500);
-    expect(calculateActualROI(10000, [], lowRevenues, mockCosts)).toBe(-15);
+    // Act Profit: -1500. Act Costs: 2000. ROI = -1500 / 2000 * 100 = -75
+    expect(calculateActualROI(10000, [], lowRevenues, mockCosts)).toBe(-75);
   });
 
   it('10. calculates variance correctly', () => {
@@ -115,12 +116,12 @@ describe('Finance calculations', () => {
       }
     ] as any;
     
-    // Total capital = 20000
+    // Total Act Costs = 2000 + 4000 = 6000
     // Proj Profit = (0 - 0) + (0 - 0) = 0
     // Act Profit = (10000 - 2000) + (20000 - 4000) = 8000 + 16000 = 24000
-    // Act ROI = 24000 / 20000 * 100 = 120%
+    // Act ROI = 24000 / 6000 * 100 = 400%
     const roi = calculatePortfolioROI(investments);
-    expect(roi.actualROI).toBe(120);
+    expect(roi.actualROI).toBe(400);
     expect(roi.projectedROI).toBe(0);
   });
 
