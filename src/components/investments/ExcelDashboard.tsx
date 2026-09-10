@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { InvestmentWithDetails, calculateProjectedProfit, calculateActualProfit, calculateActualROI, calculateProjectedROI } from '@/lib/finance';
+import { InvestmentWithDetails, calculateProjectedProfit, calculateActualProfit, calculateActualROI, calculateProjectedROI, calculateProjectedRevenue, calculateActualRevenue, calculateProjectedCosts, calculateActualCosts } from '@/lib/finance';
 import { formatCurrency, formatPercentage } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { createCost, deleteCost, updateCost, createRevenue, deleteRevenue, updateRevenue, updateInvestment, deleteInvestment } from '@/lib/actions';
@@ -19,6 +19,11 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
   const actProfit = calculateActualProfit(revenues, costs);
   const variance = actProfit - projProfit;
   
+  const projRev = calculateProjectedRevenue(revenues);
+  const actRev = calculateActualRevenue(revenues);
+  const projCosts = calculateProjectedCosts(costs);
+  const actCosts = calculateActualCosts(costs);
+
   const projROI = calculateProjectedROI(initialInvestment, capitalContributions, revenues, costs);
   const actROI = calculateActualROI(initialInvestment, capitalContributions, revenues, costs);
 
@@ -76,19 +81,24 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
     setEditingId(null);
   };
 
-  const KpiCard = ({ title, value, subtext, icon: Icon, trend }: any) => (
+  const KpiCard = ({ title, value, subtext, description, icon: Icon, trend }: any) => (
     <div className="bg-card border border-border p-5 rounded-xl shadow-sm flex items-start justify-between">
       <div>
-        <p className="text-base font-medium text-muted-foreground">{title}</p>
-        <h3 className="text-3xl font-bold mt-2">{value}</h3>
+        <p className="text-lg font-medium text-foreground/80">{title}</p>
+        <h3 className="text-4xl font-bold mt-2 text-foreground">{value}</h3>
         {subtext && (
-          <p className={cn("text-sm font-medium mt-1", trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground')}>
+          <p className={cn("text-base font-semibold mt-2", trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-foreground/70')}>
             {subtext}
+          </p>
+        )}
+        {description && (
+          <p className="text-sm font-mono mt-3 bg-muted/60 p-2 rounded-md text-foreground/80 border border-border/50">
+            {description}
           </p>
         )}
       </div>
       <div className={cn("p-2 rounded-lg", trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary')}>
-        <Icon className="w-5 h-5" />
+        <Icon className="w-6 h-6" />
       </div>
     </div>
   );
@@ -146,24 +156,28 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
         <KpiCard 
           title="Projected Profit" 
           value={formatCurrency(projProfit, currency)} 
+          description={`${formatCurrency(projRev, currency)} - ${formatCurrency(projCosts, currency)}`}
           icon={Activity} 
         />
         <KpiCard 
           title="Actual Profit" 
           value={formatCurrency(actProfit, currency)} 
           subtext={`${variance > 0 ? '+' : ''}${formatCurrency(variance, currency)} Variance`}
+          description={`${formatCurrency(actRev, currency)} - ${formatCurrency(actCosts, currency)}`}
           trend={variance > 0 ? 'up' : variance < 0 ? 'down' : 'neutral'}
           icon={DollarSign} 
         />
         <KpiCard 
           title="Projected ROI" 
           value={formatPercentage(projROI)} 
+          description={`${formatCurrency(projProfit, currency)} / ${formatCurrency(projCosts, currency)}`}
           icon={TrendingUp} 
         />
         <KpiCard 
           title="Actual ROI" 
           value={formatPercentage(actROI)} 
           subtext={`${(actROI - projROI).toFixed(2)}% vs Projected`}
+          description={`${formatCurrency(actProfit, currency)} / ${formatCurrency(actCosts, currency)}`}
           trend={actROI > projROI ? 'up' : actROI < projROI ? 'down' : 'neutral'}
           icon={actROI > projROI ? TrendingUp : TrendingDown} 
         />
