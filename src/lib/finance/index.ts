@@ -62,16 +62,18 @@ export function calculateActualProfit(revenues: Revenue[], costs: Cost[]): numbe
 
 export function calculateProjectedROI(initialInvestment: number, contributions: CapitalContribution[], revenues: Revenue[], costs: Cost[]): number {
   const totalCapital = calculateTotalInvestedCapital(initialInvestment, contributions);
-  if (totalCapital === 0) return 0;
+  const baseForRoi = totalCapital > 0 ? totalCapital : calculateProjectedCosts(costs);
+  if (baseForRoi === 0) return 0;
   const profit = calculateProjectedProfit(revenues, costs);
-  return (profit / totalCapital) * 100;
+  return (profit / baseForRoi) * 100;
 }
 
 export function calculateActualROI(initialInvestment: number, contributions: CapitalContribution[], revenues: Revenue[], costs: Cost[]): number {
   const totalCapital = calculateTotalInvestedCapital(initialInvestment, contributions);
-  if (totalCapital === 0) return 0;
+  const baseForRoi = totalCapital > 0 ? totalCapital : calculateActualCosts(costs);
+  if (baseForRoi === 0) return 0;
   const profit = calculateActualProfit(revenues, costs);
-  return (profit / totalCapital) * 100;
+  return (profit / baseForRoi) * 100;
 }
 
 export function calculateVariance(projected: number, actual: number): { value: number, percentage: number } {
@@ -84,15 +86,22 @@ export function calculatePortfolioROI(investments: InvestmentWithDetails[]): { p
   let totalCapital = 0;
   let totalActProfit = 0;
   let totalProjProfit = 0;
+  let fallbackProjCosts = 0;
+  let fallbackActCosts = 0;
   for (const inv of investments) {
     totalCapital += calculateTotalInvestedCapital(inv.initialInvestment, inv.capitalContributions);
     totalActProfit += calculateActualProfit(inv.revenues, inv.costs);
     totalProjProfit += calculateProjectedProfit(inv.revenues, inv.costs);
+    fallbackProjCosts += calculateProjectedCosts(inv.costs);
+    fallbackActCosts += calculateActualCosts(inv.costs);
   }
-  if (totalCapital === 0) return { projectedROI: 0, actualROI: 0 };
+  
+  const baseProj = totalCapital > 0 ? totalCapital : fallbackProjCosts;
+  const baseAct = totalCapital > 0 ? totalCapital : fallbackActCosts;
+
   return {
-    projectedROI: (totalProjProfit / totalCapital) * 100,
-    actualROI: (totalActProfit / totalCapital) * 100
+    projectedROI: baseProj > 0 ? (totalProjProfit / baseProj) * 100 : 0,
+    actualROI: baseAct > 0 ? (totalActProfit / baseAct) * 100 : 0
   };
 }
 

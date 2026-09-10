@@ -79,9 +79,11 @@ describe('Finance calculations', () => {
     expect(calculateActualROI(10000, mockContributions, mockRevenues, mockCosts)).toBeCloseTo(108.333, 2);
   });
 
-  it('8. returns 0 for ROI when capital is zero', () => {
-    expect(calculateProjectedROI(0, [], mockRevenues, mockCosts)).toBe(0);
-    expect(calculateActualROI(0, [], mockRevenues, mockCosts)).toBe(0);
+  it('8. falls back to costs for ROI when capital is zero', () => {
+    // Proj Profit: 11000, Proj Costs: 2000 -> 11000 / 2000 = 550%
+    expect(calculateProjectedROI(0, [], mockRevenues, mockCosts)).toBe(550);
+    // Act Profit: 13000, Act Costs: 2000 -> 13000 / 2000 = 650%
+    expect(calculateActualROI(0, [], mockRevenues, mockCosts)).toBe(650);
   });
 
   it('9. handles negative profit scenario', () => {
