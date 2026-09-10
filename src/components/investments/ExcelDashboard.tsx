@@ -423,11 +423,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
         </div>
       </div>
       
-      {/* Charts Section to visually reflect the data */}
-      <div className="mt-8 pt-8 border-t border-border">
-        <h2 className="text-xl font-bold mb-6">Visual Analysis</h2>
-        <DashboardCharts investments={[investment]} />
-      </div>
+
 
       {/* Risk Simulation */}
       <MonteCarloSimulation investment={investment} />

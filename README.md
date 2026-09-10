@@ -115,6 +115,21 @@ Cost Variance = Actual Costs - Projected Costs           (positive = unfavorable
 Profit Variance = Actual Profit - Projected Profit       (positive = favorable)
 ```
 
+### Monte Carlo Risk Simulation
+CapitalScope includes a stochastic risk analysis engine (Monte Carlo Simulation) to evaluate the probability of different profit outcomes based on volatility.
+
+**How it works:**
+1. The engine runs **2,000 independent simulation scenarios**.
+2. **Fixed Costs** are strictly maintained as a rigid baseline.
+3. **Revenues** and **Variable Costs** fluctuate based on a selected **Volatility %** (ranging from 5% to 50%).
+4. The random values follow a Gaussian (Normal) distribution via the Box-Muller transform to simulate realistic financial variance.
+
+**Key Statistics Provided:**
+- **P10 (Pessimistic):** There is a 90% statistical probability of exceeding this profit (and its associated ROI).
+- **P50 (Base Case):** The median expected outcome across all 2,000 scenarios.
+- **P90 (Optimistic):** There is only a 10% statistical probability of reaching or exceeding this high-end profit.
+- **Break-even Analysis:** A visual histogram displays the frequency of outcomes against the break-even line to evaluate the risk of loss.
+
 ### Portfolio ROI
 ```
 Portfolio ROI = (Total Portfolio Profit / Total Portfolio Capital) × 100

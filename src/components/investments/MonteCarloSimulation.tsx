@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { InvestmentWithDetails } from '@/lib/finance';
+import { InvestmentWithDetails, calculateTotalInvestedCapital } from '@/lib/finance';
 import { runMonteCarloSimulation } from '@/lib/finance/monteCarlo';
-import { formatCurrency } from '@/lib/utils/format';
+import { formatCurrency, formatPercentage } from '@/lib/utils/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
 import { Settings2, TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react';
 
@@ -16,6 +16,9 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
   }, [investment, volatility]);
 
   const { p10, p50, p90, histogram } = simulation;
+
+  const totalCapital = calculateTotalInvestedCapital(investment.initialInvestment, investment.capitalContributions);
+  const getRoiStr = (profit: number) => totalCapital > 0 ? formatPercentage((profit / totalCapital) * 100) : '0%';
 
   return (
     <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-6 mt-8">
@@ -58,8 +61,11 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
             <AlertTriangle className="w-4 h-4" />
             <h3 className="font-semibold text-sm">P10 Pessimistic</h3>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(p10, investment.currency)}</p>
-          <p className="text-xs text-muted-foreground mt-1">90% chance of exceeding this profit</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl font-bold">{formatCurrency(p10, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p10)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">90% chance of exceeding this</p>
         </div>
 
         <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
@@ -67,8 +73,11 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
             <TrendingUp className="w-4 h-4" />
             <h3 className="font-semibold text-sm">P50 Base Case</h3>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(p50, investment.currency)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Median expected profit</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl font-bold">{formatCurrency(p50, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p50)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Median expected outcome</p>
         </div>
 
         <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
@@ -76,8 +85,11 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
             <TrendingUp className="w-4 h-4" />
             <h3 className="font-semibold text-sm">P90 Optimistic</h3>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(p90, investment.currency)}</p>
-          <p className="text-xs text-muted-foreground mt-1">10% chance of reaching this profit</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl font-bold">{formatCurrency(p90, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p90)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">10% chance of reaching this</p>
         </div>
       </div>
 
