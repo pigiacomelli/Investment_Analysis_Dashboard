@@ -18,6 +18,7 @@ import {
   calculateCashFlow,
   InvestmentWithDetails
 } from './index';
+import { formatPercentage } from '../utils/format';
 
 describe('Finance calculations', () => {
   const d1 = new Date('2024-01-15T12:00:00Z');
@@ -173,5 +174,11 @@ describe('Finance calculations', () => {
       costs: []
     } as any;
     expect(calculateCashFlow(investment)).toEqual([]);
+  });
+
+  it('14. formats percentages correctly without 10x or 100x multiplier error', () => {
+    expect(formatPercentage(550)).toBe('550.00%');
+    expect(formatPercentage(50)).toBe('50.00%');
+    expect(formatPercentage(0)).toBe('0.00%');
   });
 });
