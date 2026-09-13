@@ -26,8 +26,8 @@ export default async function AnalyticsPage() {
     const actRev = calculateActualRevenue(inv.revenues)
     const projProfit = calculateProjectedProfit(inv.revenues, inv.costs)
     const actProfit = calculateActualProfit(inv.revenues, inv.costs)
-    const projROI = calculateProjectedROI(inv.initialInvestment, inv.capitalContributions, inv.revenues, inv.costs)
-    const actROI = calculateActualROI(inv.initialInvestment, inv.capitalContributions, inv.revenues, inv.costs)
+    const projROI = calculateProjectedROI(inv.revenues, inv.costs)
+    const actROI = calculateActualROI(inv.revenues, inv.costs)
     const profitVariance = actProfit - projProfit
 
     return {
@@ -69,17 +69,17 @@ export default async function AnalyticsPage() {
             {enrichedInvestments.map((inv) => (
               <tr key={inv.id} className="hover:bg-muted/50 transition-colors">
                 <td className="px-4 py-3 font-medium">{inv.name}</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(inv.capital)}</td>
-                <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(inv.projRev)}</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(inv.actRev)}</td>
-                <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(inv.projProfit)}</td>
-                <td className="px-4 py-3 text-right">{formatCurrency(inv.actProfit)}</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(inv.capital, inv.currency)}</td>
+                <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(inv.projRev, inv.currency)}</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(inv.actRev, inv.currency)}</td>
+                <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(inv.projProfit, inv.currency)}</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(inv.actProfit, inv.currency)}</td>
                 <td className={cn(
                   "px-4 py-3 text-right font-medium",
                   inv.profitVariance > 0 ? "text-emerald-600 dark:text-emerald-500" : 
                   inv.profitVariance < 0 ? "text-red-600 dark:text-red-500" : "text-muted-foreground"
                 )}>
-                  {inv.profitVariance > 0 ? '+' : ''}{formatCurrency(inv.profitVariance)}
+                  {inv.profitVariance > 0 ? '+' : ''}{formatCurrency(inv.profitVariance, inv.currency)}
                 </td>
                 <td className="px-4 py-3 text-right text-muted-foreground">{formatPercentage(inv.projROI)}</td>
                 <td className="px-4 py-3 text-right font-medium">{formatPercentage(inv.actROI)}</td>

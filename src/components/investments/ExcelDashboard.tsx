@@ -6,12 +6,46 @@ import { formatCurrency, formatPercentage } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { createCost, deleteCost, updateCost, createRevenue, deleteRevenue, updateRevenue, updateInvestment, deleteInvestment } from '@/lib/actions';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, Edit2, X, Save, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
-import DashboardCharts from '@/components/dashboard/DashboardCharts';
+import { Trash2, Edit2, X, Save, TrendingUp, TrendingDown, DollarSign, Activity, type LucideIcon } from 'lucide-react';
 import { MonteCarloSimulation } from './MonteCarloSimulation';
 
+type Trend = 'up' | 'down' | 'neutral';
+
+interface KpiCardProps {
+  title: string;
+  value: string;
+  subtext?: string;
+  description?: string;
+  icon: LucideIcon;
+  trend?: Trend;
+}
+
+function KpiCard({ title, value, subtext, description, icon: Icon, trend = 'neutral' }: KpiCardProps) {
+  return (
+    <div className="bg-card border border-border p-5 rounded-xl shadow-sm flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <h3 className="text-2xl font-bold mt-2">{value}</h3>
+        {subtext && (
+          <p className={cn("text-xs font-medium mt-1", trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground')}>
+            {subtext}
+          </p>
+        )}
+        {description && (
+          <p className="text-[10px] font-mono mt-2 bg-muted/50 p-1.5 rounded-md text-muted-foreground border border-border/50">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className={cn("p-2 rounded-lg", trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary')}>
+        <Icon className="w-5 h-5" />
+      </div>
+    </div>
+  );
+}
+
 export function ExcelDashboard({ investment }: { investment: InvestmentWithDetails }) {
-  const { revenues, costs, currency, initialInvestment, capitalContributions } = investment;
+  const { revenues, costs, currency } = investment;
   const fixedCosts = costs.filter(c => c.costType === 'FIXED');
   const variableCosts = costs.filter(c => c.costType === 'VARIABLE');
 
@@ -24,8 +58,8 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
   const projCosts = calculateProjectedCosts(costs);
   const actCosts = calculateActualCosts(costs);
 
-  const projROI = calculateProjectedROI(initialInvestment, capitalContributions, revenues, costs);
-  const actROI = calculateActualROI(initialInvestment, capitalContributions, revenues, costs);
+  const projROI = calculateProjectedROI(revenues, costs);
+  const actROI = calculateActualROI(revenues, costs);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isEditingProject, setIsEditingProject] = useState(false);
@@ -36,7 +70,6 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
     const formData = new FormData(e.currentTarget);
     // Include required fields that aren't in the inline form
     formData.append('status', investment.status);
-    formData.append('initialInvestment', investment.initialInvestment.toString());
     await updateInvestment(investment.id, formData);
     setIsEditingProject(false);
   };
@@ -81,35 +114,13 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
     setEditingId(null);
   };
 
-  const KpiCard = ({ title, value, subtext, description, icon: Icon, trend }: any) => (
-    <div className="bg-card border border-border p-5 rounded-xl shadow-sm flex items-start justify-between">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <h3 className="text-2xl font-bold mt-2">{value}</h3>
-        {subtext && (
-          <p className={cn("text-xs font-medium mt-1", trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground')}>
-            {subtext}
-          </p>
-        )}
-        {description && (
-          <p className="text-[10px] font-mono mt-2 bg-muted/50 p-1.5 rounded-md text-muted-foreground border border-border/50">
-            {description}
-          </p>
-        )}
-      </div>
-      <div className={cn("p-2 rounded-lg", trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary')}>
-        <Icon className="w-5 h-5" />
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {isEditingProject ? (
-          <form onSubmit={handleUpdateProject} className="flex-1 flex gap-2 max-w-2xl">
+          <form onSubmit={handleUpdateProject} className="flex flex-1 flex-wrap gap-2">
             <input name="name" required defaultValue={investment.name} className="flex-1 px-3 py-2 bg-background border border-input rounded-md font-bold text-xl" />
             <select name="category" required defaultValue={investment.category} className="px-3 py-2 bg-background border border-input rounded-md">
               <option value="Business">Business</option>
@@ -126,6 +137,17 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
               <option value="BRL">BRL (R$)</option>
               <option value="GBP">GBP (£)</option>
             </select>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              name="initialInvestment"
+              required
+              aria-label="Initial capital"
+              title="Initial capital"
+              defaultValue={investment.initialInvestment}
+              className="w-36 rounded-md border border-input bg-background px-3 py-2"
+            />
             <input type="date" name="startDate" required defaultValue={new Date(investment.startDate).toISOString().split('T')[0]} className="px-3 py-2 bg-background border border-input rounded-md" />
             <div className="flex items-center gap-1 ml-2">
               <button type="submit" className="p-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"><Save className="w-4 h-4" /></button>
@@ -140,7 +162,9 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                 <Edit2 className="w-4 h-4" />
               </button>
             </h1>
-            <p className="text-muted-foreground">{investment.category} • {investment.currency} • Started {new Date(investment.startDate).toLocaleDateString()}</p>
+            <p className="text-muted-foreground">
+              {investment.category} • {investment.currency} • Initial capital {formatCurrency(investment.initialInvestment, currency)} • Started {new Date(investment.startDate).toLocaleDateString()}
+            </p>
           </div>
         )}
         
@@ -266,6 +290,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
             <h3 className="font-semibold text-lg text-orange-500 flex items-center gap-2">
               <Activity className="w-5 h-5" /> Fixed Costs
             </h3>
+            <p className="mt-1 text-xs text-muted-foreground">Each row represents one dated occurrence; frequency is an informational label.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -293,6 +318,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                             <option value="YEARLY">Yearly</option>
                             <option value="ONE_TIME">One Time</option>
                             <option value="WEEKLY">Weekly</option>
+                            <option value="QUARTERLY">Quarterly</option>
                           </select>
                           <input type="date" name="date" required defaultValue={new Date(cost.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
                           <input type="number" step="0.01" name="projectedAmount" required defaultValue={cost.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
@@ -332,6 +358,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                           <option value="YEARLY">Yearly</option>
                           <option value="ONE_TIME">One Time</option>
                           <option value="WEEKLY">Weekly</option>
+                          <option value="QUARTERLY">Quarterly</option>
                         </select>
                         <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
                         <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
@@ -354,6 +381,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
             <h3 className="font-semibold text-lg text-red-500 flex items-center gap-2">
               <TrendingDown className="w-5 h-5" /> Variable Costs
             </h3>
+            <p className="mt-1 text-xs text-muted-foreground">Each row represents one dated occurrence; frequency is an informational label.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -381,6 +409,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                             <option value="MONTHLY">Monthly</option>
                             <option value="YEARLY">Yearly</option>
                             <option value="WEEKLY">Weekly</option>
+                            <option value="QUARTERLY">Quarterly</option>
                           </select>
                           <input type="date" name="date" required defaultValue={new Date(cost.date).toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
                           <input type="number" step="0.01" name="projectedAmount" required defaultValue={cost.projectedAmount} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />
@@ -420,6 +449,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
                           <option value="MONTHLY">Monthly</option>
                           <option value="YEARLY">Yearly</option>
                           <option value="WEEKLY">Weekly</option>
+                          <option value="QUARTERLY">Quarterly</option>
                         </select>
                         <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="px-4 py-3 bg-transparent border-none outline-none text-sm text-muted-foreground focus:bg-background transition-colors" />
                         <input type="number" step="0.01" name="projectedAmount" required placeholder="Proj $" className="px-4 py-3 bg-transparent border-none outline-none text-sm text-right focus:bg-background transition-colors" />

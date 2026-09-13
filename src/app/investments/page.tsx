@@ -65,8 +65,8 @@ export default async function InvestmentsPage() {
                 const actRev = calculateActualRevenue(inv.revenues)
                 const projProfit = calculateProjectedProfit(inv.revenues, inv.costs)
                 const actProfit = calculateActualProfit(inv.revenues, inv.costs)
-                const projROI = calculateProjectedROI(inv.initialInvestment, inv.capitalContributions, inv.revenues, inv.costs)
-                const actROI = calculateActualROI(inv.initialInvestment, inv.capitalContributions, inv.revenues, inv.costs)
+                const projROI = calculateProjectedROI(inv.revenues, inv.costs)
+                const actROI = calculateActualROI(inv.revenues, inv.costs)
 
                 return (
                   <tr key={inv.id} className="hover:bg-muted/50 transition-colors">
@@ -81,11 +81,11 @@ export default async function InvestmentsPage() {
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(capital)}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(projRev)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(actRev)}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(projProfit)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(actProfit)}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(capital, inv.currency)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(projRev, inv.currency)}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(actRev, inv.currency)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(projProfit, inv.currency)}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(actProfit, inv.currency)}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{formatPercentage(projROI)}</td>
                     <td className="px-4 py-3 text-right">{formatPercentage(actROI)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(inv.startDate)}</td>

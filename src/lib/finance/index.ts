@@ -60,14 +60,14 @@ export function calculateActualProfit(revenues: Revenue[], costs: Cost[]): numbe
   return calculateActualRevenue(revenues) - calculateActualCosts(costs);
 }
 
-export function calculateProjectedROI(initialInvestment: number, contributions: CapitalContribution[], revenues: Revenue[], costs: Cost[]): number {
+export function calculateProjectedROI(revenues: Revenue[], costs: Cost[]): number {
   const totalCosts = calculateProjectedCosts(costs);
   if (totalCosts === 0) return 0;
   const profit = calculateProjectedProfit(revenues, costs);
   return (profit / totalCosts) * 100;
 }
 
-export function calculateActualROI(initialInvestment: number, contributions: CapitalContribution[], revenues: Revenue[], costs: Cost[]): number {
+export function calculateActualROI(revenues: Revenue[], costs: Cost[]): number {
   const totalCosts = calculateActualCosts(costs);
   if (totalCosts === 0) return 0;
   const profit = calculateActualProfit(revenues, costs);

@@ -1,141 +1,273 @@
-'use client';
+'use client'
 
-import { useState, useMemo, useEffect } from 'react';
-import { InvestmentWithDetails, calculateTotalInvestedCapital } from '@/lib/finance';
-import { runMonteCarloSimulation } from '@/lib/finance/monteCarlo';
-import { formatCurrency, formatPercentage } from '@/lib/utils/format';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
-import { Settings2, TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useMemo, useState, useSyncExternalStore } from 'react'
+import { InvestmentWithDetails } from '@/lib/finance'
+import { HistogramBin, runMonteCarloSimulation } from '@/lib/finance/monteCarlo'
+import { formatCurrency, formatPercentage } from '@/lib/utils/format'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Cell,
+} from 'recharts'
+import { AlertTriangle, CircleDollarSign, Gauge, Settings2, TrendingDown, TrendingUp } from 'lucide-react'
 
-export function MonteCarloSimulation({ investment }: { investment: InvestmentWithDetails }) {
-  const [volatility, setVolatility] = useState<number>(0.20);
-  const [isMounted, setIsMounted] = useState(false);
+const subscribeToClient = () => () => undefined
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  
-  // Re-run simulation when volatility changes
-  const simulation = useMemo(() => {
-    if (!isMounted) return null;
-    return runMonteCarloSimulation(investment, volatility, 2000);
-  }, [investment, volatility, isMounted]);
+interface RiskSliderProps {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}
 
-  if (!isMounted || !simulation) {
-    return <div className="animate-pulse bg-muted/20 border border-border rounded-xl shadow-sm h-96 mt-8"></div>;
-  }
+function RiskSlider({ label, value, onChange }: RiskSliderProps) {
+  return (
+    <label className="space-y-2">
+      <span className="flex justify-between text-sm font-medium">
+        {label}
+        <span className="font-bold text-primary">{formatPercentage(value * 100)}</span>
+      </span>
+      <input
+        type="range"
+        min="0"
+        max="0.5"
+        step="0.05"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full accent-primary"
+      />
+    </label>
+  )
+}
 
-  const { p10, p50, p90, histogram } = simulation;
+interface StatisticCardProps {
+  label: string
+  value: string
+  detail: string
+  tone?: 'positive' | 'negative' | 'neutral'
+}
 
-  const totalCapital = calculateTotalInvestedCapital(investment.initialInvestment, investment.capitalContributions);
-  const getRoiStr = (profit: number) => totalCapital > 0 ? formatPercentage((profit / totalCapital) * 100) : '0%';
+function StatisticCard({ label, value, detail, tone = 'neutral' }: StatisticCardProps) {
+  const toneClass = tone === 'positive'
+    ? 'text-emerald-500'
+    : tone === 'negative'
+      ? 'text-red-500'
+      : 'text-foreground'
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-6 mt-8">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+    <div className="rounded-lg border border-border bg-muted/20 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-xl font-bold ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+    </div>
+  )
+}
+
+export function MonteCarloSimulation({ investment }: { investment: InvestmentWithDetails }) {
+  const isMounted = useSyncExternalStore(subscribeToClient, getClientSnapshot, getServerSnapshot)
+  const [revenueVolatility, setRevenueVolatility] = useState(0.2)
+  const [variableCostVolatility, setVariableCostVolatility] = useState(0.2)
+  const [fixedCostVolatility, setFixedCostVolatility] = useState(0)
+
+  const simulation = useMemo(() => {
+    if (!isMounted) return null
+    return runMonteCarloSimulation(investment, {
+      revenueVolatility,
+      variableCostVolatility,
+      fixedCostVolatility,
+      iterations: 10_000,
+    })
+  }, [fixedCostVolatility, investment, isMounted, revenueVolatility, variableCostVolatility])
+
+  if (!simulation) {
+    return <div className="mt-8 h-96 animate-pulse rounded-xl border border-border bg-muted/20 shadow-sm" />
+  }
+
+  const {
+    p10,
+    p50,
+    p90,
+    roiP10,
+    roiP50,
+    roiP90,
+    baseProfit,
+    baseROI,
+    meanProfit,
+    meanROI,
+    profitStdDev,
+    probabilityOfProfit,
+    probabilityOfLoss,
+    breakEvenRevenue,
+    minProfit,
+    maxProfit,
+    histogram,
+    iterations,
+  } = simulation
+
+  const scenarioCards = [
+    {
+      label: 'P10 Pessimistic',
+      description: '90% of scenarios exceed this profit',
+      profit: p10,
+      roi: roiP10,
+      icon: AlertTriangle,
+      className: 'border-red-500/20 bg-red-500/5 text-red-500',
+    },
+    {
+      label: 'P50 Median',
+      description: 'Half of scenarios are above this result',
+      profit: p50,
+      roi: roiP50,
+      icon: Gauge,
+      className: 'border-blue-500/20 bg-blue-500/5 text-blue-500',
+    },
+    {
+      label: 'P90 Optimistic',
+      description: '10% of scenarios reach or exceed this profit',
+      profit: p90,
+      roi: roiP90,
+      icon: TrendingUp,
+      className: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500',
+    },
+  ]
+
+  return (
+    <section className="mt-8 overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="mb-8 flex flex-col items-start justify-between gap-6 lg:flex-row">
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Settings2 className="w-5 h-5 text-primary" /> 
+          <h2 className="flex items-center gap-2 text-xl font-bold">
+            <Settings2 className="h-5 w-5 text-primary" />
             Monte Carlo Risk Simulation
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Simulating 2,000 scenarios by varying revenues and variable costs (fixed costs remain constant).
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            {iterations.toLocaleString('en-US')} reproducible scenarios. Profit and ROI are calculated from each scenario&apos;s revenue and total project cost.
           </p>
         </div>
-        
-        <div className="flex flex-col gap-2 min-w-[200px] bg-muted/30 p-4 rounded-lg border border-border">
-          <label className="text-sm font-medium flex justify-between">
-            Volatility (Risk)
-            <span className="text-primary font-bold">{(volatility * 100).toFixed(0)}%</span>
-          </label>
-          <input 
-            type="range" 
-            min="0.05" 
-            max="0.50" 
-            step="0.05" 
-            value={volatility} 
-            onChange={(e) => setVolatility(parseFloat(e.target.value))}
-            className="w-full accent-primary"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Low (5%)</span>
-            <span>High (50%)</span>
-          </div>
+
+        <div className="grid w-full gap-4 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-3 lg:max-w-3xl">
+          <RiskSlider label="Revenue risk" value={revenueVolatility} onChange={setRevenueVolatility} />
+          <RiskSlider label="Variable cost risk" value={variableCostVolatility} onChange={setVariableCostVolatility} />
+          <RiskSlider label="Fixed cost risk" value={fixedCostVolatility} onChange={setFixedCostVolatility} />
         </div>
       </div>
 
-      {/* Scenario Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5">
-          <div className="flex items-center gap-2 text-red-500 mb-2">
-            <AlertTriangle className="w-4 h-4" />
-            <h3 className="font-semibold text-sm">P10 Pessimistic</h3>
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {scenarioCards.map(({ label, description, profit, roi, icon: Icon, className }) => (
+          <div key={label} className={`rounded-xl border p-4 ${className}`}>
+            <div className="mb-2 flex items-center gap-2">
+              <Icon className="h-4 w-4" />
+              <h3 className="text-sm font-semibold">{label}</h3>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(profit, investment.currency)}</p>
+            <p className="text-sm font-medium text-muted-foreground">ROI: {formatPercentage(roi)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold">{formatCurrency(p10, investment.currency)}</p>
-            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p10)}</p>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">90% chance of exceeding this</p>
-        </div>
+        ))}
+      </div>
 
-        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-          <div className="flex items-center gap-2 text-blue-500 mb-2">
-            <TrendingUp className="w-4 h-4" />
-            <h3 className="font-semibold text-sm">P50 Base Case</h3>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold">{formatCurrency(p50, investment.currency)}</p>
-            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p50)}</p>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Median expected outcome</p>
-        </div>
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        <StatisticCard
+          label="Projected baseline"
+          value={formatCurrency(baseProfit, investment.currency)}
+          detail={`ROI ${formatPercentage(baseROI)}`}
+        />
+        <StatisticCard
+          label="Expected profit"
+          value={formatCurrency(meanProfit, investment.currency)}
+          detail={`Expected ROI ${formatPercentage(meanROI)}`}
+          tone={meanProfit >= 0 ? 'positive' : 'negative'}
+        />
+        <StatisticCard
+          label="Profit probability"
+          value={formatPercentage(probabilityOfProfit)}
+          detail="Share of scenarios above zero"
+          tone="positive"
+        />
+        <StatisticCard
+          label="Loss probability"
+          value={formatPercentage(probabilityOfLoss)}
+          detail="Share of scenarios at or below zero"
+          tone="negative"
+        />
+        <StatisticCard
+          label="Profit deviation"
+          value={formatCurrency(profitStdDev, investment.currency)}
+          detail="Standard deviation of simulated profit"
+        />
+        <StatisticCard
+          label="Break-even revenue"
+          value={formatCurrency(breakEvenRevenue, investment.currency)}
+          detail="Projected cost baseline"
+        />
+      </div>
 
-        <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-          <div className="flex items-center gap-2 text-emerald-500 mb-2">
-            <TrendingUp className="w-4 h-4" />
-            <h3 className="font-semibold text-sm">P90 Optimistic</h3>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold">{formatCurrency(p90, investment.currency)}</p>
-            <p className="text-sm font-medium text-muted-foreground">ROI: {getRoiStr(p90)}</p>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">10% chance of reaching this</p>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <CircleDollarSign className="h-4 w-4 text-primary" />
+          Profit distribution
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> Loss</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" /> Profit</span>
         </div>
       </div>
 
-      {/* Histogram Chart */}
-      <div className="h-[300px] w-full">
+      <div className="h-[320px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={histogram} margin={{ top: 10, right: 10, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-            <XAxis 
-              dataKey="bin" 
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.2)" />
+            <XAxis
+              dataKey="binMidpoint"
+              type="number"
+              domain={['dataMin', 'dataMax']}
               tickFormatter={(value) => formatCurrency(Number(value), investment.currency)}
               tick={{ fontSize: 11 }}
               tickMargin={10}
-              stroke="rgba(255,255,255,0.2)"
+              stroke="rgba(148,163,184,0.5)"
             />
             <YAxis hide />
             <Tooltip
-              formatter={(value: any) => [`${value} Scenarios`, 'Frequency']}
-              labelFormatter={(label) => `Profit: ${formatCurrency(Number(label), investment.currency)}`}
+              formatter={(value) => [`${Number(value).toLocaleString('en-US')} scenarios`, 'Frequency']}
+              labelFormatter={(_label, payload) => {
+                const bin = payload?.[0]?.payload as HistogramBin | undefined
+                return bin
+                  ? `${formatCurrency(bin.binStart, investment.currency)} to ${formatCurrency(bin.binEnd, investment.currency)}`
+                  : ''
+              }}
               contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {histogram.map((entry, index) => {
-                const binVal = Number(entry.bin);
-                // Color code based on profit value
-                const color = binVal < 0 ? '#ef4444' : '#3b82f6'; // red for loss, blue for profit
-                return <Cell key={`cell-${index}`} fill={color} fillOpacity={0.8} />;
-              })}
+              {histogram.map((entry) => (
+                <Cell
+                  key={`${entry.binStart}-${entry.binEnd}`}
+                  fill={entry.binMidpoint < 0 ? '#ef4444' : '#3b82f6'}
+                  fillOpacity={0.8}
+                />
+              ))}
             </Bar>
-            
-            {/* Break-even line */}
-            <ReferenceLine x="0" stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'top', value: 'Break-even', fill: '#ef4444', fontSize: 12 }} />
+            {minProfit <= 0 && maxProfit >= 0 && (
+              <ReferenceLine
+                x={0}
+                stroke="#ef4444"
+                strokeDasharray="3 3"
+                label={{ position: 'top', value: 'Break-even', fill: '#ef4444', fontSize: 12 }}
+              />
+            )}
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-    </div>
-  );
+      <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <TrendingDown className="h-3.5 w-3.5" />
+        Equal inputs produce equal results. Percentages represent model estimates, not guarantees.
+      </p>
+    </section>
+  )
 }

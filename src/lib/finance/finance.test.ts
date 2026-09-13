@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { CapitalContribution, Cost, Revenue } from '@prisma/client';
 import {
   calculateTotalInvestedCapital,
   calculateProjectedRevenue,
@@ -29,16 +30,16 @@ describe('Finance calculations', () => {
     { costType: 'FIXED', projectedAmount: 500, actualAmount: 500, date: d2 },
     { costType: 'VARIABLE', projectedAmount: 200, actualAmount: 300, date: d1 },
     { costType: 'VARIABLE', projectedAmount: 300, actualAmount: 100, date: d2 },
-  ] as any[];
+  ] as unknown as Cost[];
 
   const mockRevenues = [
     { projectedAmount: 5000, actualAmount: 6000, date: d1 },
     { projectedAmount: 8000, actualAmount: 9000, date: d2 },
-  ] as any[];
+  ] as unknown as Revenue[];
 
   const mockContributions = [
     { amount: 2000, date: d2 }
-  ] as any[];
+  ] as unknown as CapitalContribution[];
 
   it('1. calculates total invested capital', () => {
     expect(calculateTotalInvestedCapital(10000, mockContributions)).toBe(12000);
@@ -75,24 +76,22 @@ describe('Finance calculations', () => {
   it('7. calculates projected and actual ROI', () => {
     // Proj Costs: 2000
     // Proj Profit: 11000 -> ROI = (11000 / 2000) * 100 = 550%
-    expect(calculateProjectedROI(10000, mockContributions, mockRevenues, mockCosts)).toBe(550);
+    expect(calculateProjectedROI(mockRevenues, mockCosts)).toBe(550);
     // Act Profit: 13000 -> ROI = (13000 / 2000) * 100 = 650%
-    expect(calculateActualROI(10000, mockContributions, mockRevenues, mockCosts)).toBe(650);
+    expect(calculateActualROI(mockRevenues, mockCosts)).toBe(650);
   });
 
-  it('8. falls back to costs for ROI when capital is zero (same logic as above now)', () => {
-    // Proj Profit: 11000, Proj Costs: 2000 -> 11000 / 2000 = 550%
-    expect(calculateProjectedROI(0, [], mockRevenues, mockCosts)).toBe(550);
-    // Act Profit: 13000, Act Costs: 2000 -> 13000 / 2000 = 650%
-    expect(calculateActualROI(0, [], mockRevenues, mockCosts)).toBe(650);
+  it('8. calculates ROI on total project costs independently of project funding', () => {
+    expect(calculateProjectedROI(mockRevenues, mockCosts)).toBe(550);
+    expect(calculateActualROI(mockRevenues, mockCosts)).toBe(650);
   });
 
   it('9. handles negative profit scenario', () => {
-    const lowRevenues = [{ projectedAmount: 1000, actualAmount: 500, date: d1 }] as any[];
+    const lowRevenues = [{ projectedAmount: 1000, actualAmount: 500, date: d1 }] as unknown as Revenue[];
     expect(calculateProjectedProfit(lowRevenues, mockCosts)).toBe(-1000);
     expect(calculateActualProfit(lowRevenues, mockCosts)).toBe(-1500);
     // Act Profit: -1500. Act Costs: 2000. ROI = -1500 / 2000 * 100 = -75
-    expect(calculateActualROI(10000, [], lowRevenues, mockCosts)).toBe(-75);
+    expect(calculateActualROI(lowRevenues, mockCosts)).toBe(-75);
   });
 
   it('10. calculates variance correctly', () => {
@@ -115,7 +114,7 @@ describe('Finance calculations', () => {
         revenues: [{ actualAmount: 20000, date: d1, projectedAmount: 0 }],
         costs: [{ actualAmount: 4000, costType: 'FIXED', date: d1, projectedAmount: 0 }]
       }
-    ] as any;
+    ] as unknown as InvestmentWithDetails[];
     
     // Total Act Costs = 2000 + 4000 = 6000
     // Proj Profit = (0 - 0) + (0 - 0) = 0
@@ -133,7 +132,7 @@ describe('Finance calculations', () => {
       capitalContributions: mockContributions,
       revenues: mockRevenues,
       costs: mockCosts
-    } as any;
+    } as unknown as InvestmentWithDetails;
 
     const cf = calculateCashFlow(investment);
     expect(cf).toHaveLength(2);
@@ -162,8 +161,8 @@ describe('Finance calculations', () => {
   it('13. handles empty arrays for revenues and costs', () => {
     expect(calculateProjectedProfit([], [])).toBe(0);
     expect(calculateActualProfit([], [])).toBe(0);
-    expect(calculateProjectedROI(1000, [], [], [])).toBe(0);
-    expect(calculateActualROI(1000, [], [], [])).toBe(0);
+    expect(calculateProjectedROI([], [])).toBe(0);
+    expect(calculateActualROI([], [])).toBe(0);
     expect(calculateTotalInvestedCapital(1000, [])).toBe(1000);
     
     const investment = {
@@ -172,7 +171,7 @@ describe('Finance calculations', () => {
       capitalContributions: [],
       revenues: [],
       costs: []
-    } as any;
+    } as unknown as InvestmentWithDetails;
     expect(calculateCashFlow(investment)).toEqual([]);
   });
 

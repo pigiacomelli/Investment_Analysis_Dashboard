@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { investmentSchema, type InvestmentInput } from '@/lib/validation'
@@ -18,22 +18,22 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
   const [isPending, setIsPending] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<InvestmentInput>({
-    resolver: zodResolver(investmentSchema) as any,
+    resolver: zodResolver(investmentSchema) as unknown as Resolver<InvestmentInput>,
     defaultValues: initialData ? {
       name: initialData.name,
       description: initialData.description || '',
       category: initialData.category,
-      status: initialData.status as any,
+      status: initialData.status as InvestmentInput['status'],
       initialInvestment: initialData.initialInvestment,
       currency: initialData.currency,
-      startDate: new Date(initialData.startDate).toISOString().split('T')[0] as any,
-      endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] as any : undefined,
+      startDate: new Date(initialData.startDate).toISOString().split('T')[0] as unknown as Date,
+      endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] as unknown as Date : undefined,
       notes: initialData.notes || '',
     } : {
       status: 'PLANNED',
       currency: 'USD',
       initialInvestment: 0,
-      startDate: new Date().toISOString().split('T')[0] as any,
+      startDate: new Date().toISOString().split('T')[0] as unknown as Date,
     },
   })
 
@@ -111,6 +111,20 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
         </div>
 
         <div className="space-y-2">
+          <label htmlFor="initialInvestment" className="text-sm font-medium">Initial Capital</label>
+          <input
+            id="initialInvestment"
+            type="number"
+            min="0"
+            step="0.01"
+            {...register('initialInvestment', { valueAsNumber: true })}
+            className={inputClass(!!errors.initialInvestment)}
+          />
+          <p className="text-xs text-muted-foreground">Capital contributed to fund the project; ROI is calculated separately on total project costs.</p>
+          {errors.initialInvestment && <p className="text-xs text-destructive">{errors.initialInvestment.message}</p>}
+        </div>
+
+        <div className="space-y-2">
           <label className="text-sm font-medium">Start Date</label>
           <input
             type="date"
@@ -131,9 +145,6 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
             <option value="CANCELLED">Cancelled</option>
           </select>
         </div>
-        
-        {/* Hidden but required fields to simplify UI for user */}
-        <input type="hidden" {...register('initialInvestment', { valueAsNumber: true })} value={0} />
       </div>
 
       <div className="flex justify-end gap-3 pt-6 border-t border-border">
@@ -149,7 +160,7 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
           disabled={isPending}
           className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
         >
-          {isPending ? 'Creating...' : 'Create Project'}
+          {isPending ? 'Saving...' : initialData ? 'Save Project' : 'Create Project'}
         </button>
       </div>
     </form>
