@@ -10,6 +10,8 @@ export interface MonteCarloAssumptions {
   variableCostVolatility: number
   fixedCostVolatility: number
   iterations: number
+  /** Optional hard ceiling on simulated revenue. Scenarios that would exceed this are capped. */
+  maxRevenue?: number
   seed?: number
 }
 
@@ -174,10 +176,13 @@ export function runMonteCarloSimulation(
   let profitableScenarios = 0
 
   for (let index = 0; index < assumptions.iterations; index += 1) {
-    const simulatedRevenue = Math.max(
+    const rawRevenue = Math.max(
       0,
       randomNormal(baseRevenue, baseRevenue * assumptions.revenueVolatility, random),
     )
+    const simulatedRevenue = assumptions.maxRevenue !== undefined
+      ? Math.min(rawRevenue, assumptions.maxRevenue)
+      : rawRevenue
     const simulatedFixedCosts = Math.max(
       0,
       randomNormal(baseFixedCosts, baseFixedCosts * assumptions.fixedCostVolatility, random),

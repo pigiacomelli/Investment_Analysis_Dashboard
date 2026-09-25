@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { InvestmentWithDetails } from '@/lib/finance'
+import { InvestmentWithDetails, calculateProjectedRevenue } from '@/lib/finance'
 import { HistogramBin, runMonteCarloSimulation } from '@/lib/finance/monteCarlo'
 import { formatCurrency, formatPercentage } from '@/lib/utils/format'
 import {
@@ -76,15 +76,21 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
   const [variableCostVolatility, setVariableCostVolatility] = useState(0.2)
   const [fixedCostVolatility, setFixedCostVolatility] = useState(0)
 
+  const baseRevenue = useMemo(() => calculateProjectedRevenue(investment.revenues), [investment.revenues])
+  const [maxRevenue, setMaxRevenue] = useState<number | undefined>(undefined)
+  // Track the raw string so the input stays editable even mid-typing
+  const [maxRevenueInput, setMaxRevenueInput] = useState('')
+
   const simulation = useMemo(() => {
     if (!isMounted) return null
     return runMonteCarloSimulation(investment, {
       revenueVolatility,
       variableCostVolatility,
       fixedCostVolatility,
+      maxRevenue: maxRevenue !== undefined && maxRevenue > 0 ? maxRevenue : undefined,
       iterations: 10_000,
     })
-  }, [fixedCostVolatility, investment, isMounted, revenueVolatility, variableCostVolatility])
+  }, [fixedCostVolatility, investment, isMounted, maxRevenue, revenueVolatility, variableCostVolatility])
 
   if (!simulation) {
     return <div className="mt-8 h-96 animate-pulse rounded-xl border border-border bg-muted/20 shadow-sm" />
@@ -155,6 +161,39 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
           <RiskSlider label="Revenue risk" value={revenueVolatility} onChange={setRevenueVolatility} />
           <RiskSlider label="Variable cost risk" value={variableCostVolatility} onChange={setVariableCostVolatility} />
           <RiskSlider label="Fixed cost risk" value={fixedCostVolatility} onChange={setFixedCostVolatility} />
+          <label className="space-y-2 sm:col-span-3">
+            <span className="flex items-center justify-between text-sm font-medium">
+              <span className="flex items-center gap-1.5">
+                Maximum revenue ceiling
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-semibold text-amber-400">
+                  cap
+                </span>
+              </span>
+              {maxRevenue !== undefined && maxRevenue > 0 ? (
+                <span className="font-bold text-amber-400">{formatCurrency(maxRevenue, investment.currency)}</span>
+              ) : (
+                <span className="text-xs text-muted-foreground">no cap — unlimited upside</span>
+              )}
+            </span>
+            <input
+              id="max-revenue-input"
+              type="number"
+              min={0}
+              step={1000}
+              placeholder={`e.g. ${formatCurrency(baseRevenue * 2, investment.currency)}`}
+              value={maxRevenueInput}
+              onChange={(e) => {
+                const raw = e.target.value
+                setMaxRevenueInput(raw)
+                const parsed = parseFloat(raw)
+                setMaxRevenue(raw === '' ? undefined : Number.isFinite(parsed) ? parsed : undefined)
+              }}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+            />
+            <p className="text-xs text-muted-foreground">
+              Scenarios with revenue above this value will be capped. Leave empty for unconstrained simulation.
+            </p>
+          </label>
         </div>
       </div>
 
@@ -260,6 +299,19 @@ export function MonteCarloSimulation({ investment }: { investment: InvestmentWit
                 label={{ position: 'top', value: 'Break-even', fill: '#ef4444', fontSize: 12 }}
               />
             )}
+            {maxRevenue !== undefined && maxRevenue > 0 && (() => {
+              // Convert max revenue ceiling to profit space (revenue cap minus base costs approximation)
+              // We display the cap on the x-axis (profit domain) by computing cap-based profit
+              const capProfit = maxRevenue - simulation.breakEvenRevenue
+              return (
+                <ReferenceLine
+                  x={capProfit}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 2"
+                  label={{ position: 'insideTopRight', value: 'Revenue cap', fill: '#f59e0b', fontSize: 12 }}
+                />
+              )
+            })()}
           </BarChart>
         </ResponsiveContainer>
       </div>
