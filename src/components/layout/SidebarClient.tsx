@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Database, Plus, Briefcase, LayoutDashboard } from 'lucide-react';
+import { Database, Plus, Briefcase, LayoutDashboard, ChartNoAxesCombined, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarClientProps {
@@ -13,13 +13,18 @@ export function SidebarClient({ investments }: SidebarClientProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-card text-card-foreground flex flex-col h-full border-r border-border shadow-sm">
+    <aside className="hidden w-64 shrink-0 bg-card text-card-foreground lg:flex flex-col h-full border-r border-border shadow-sm">
       <div className="p-6">
         <Link href="/" className="text-xl font-bold flex items-center gap-2 hover:text-primary transition-colors">
           <Database className="w-6 h-6 text-primary" />
           CapitalScope
         </Link>
       </div>
+
+      <nav className="space-y-1 px-2 pb-4" aria-label="Main navigation">
+        <Link href="/investments" className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted', pathname === '/investments' && 'bg-primary/10 text-primary')}><FolderKanban className="h-4 w-4" /> All Projects</Link>
+        <Link href="/analytics" className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted', pathname === '/analytics' && 'bg-primary/10 text-primary')}><ChartNoAxesCombined className="h-4 w-4" /> Portfolio Analytics</Link>
+      </nav>
 
       <div className="px-4 py-2 flex items-center justify-between group">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</h2>

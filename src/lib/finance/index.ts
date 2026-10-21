@@ -16,6 +16,81 @@ export type CashFlowEntry = {
   cumulativeCashFlow: number;
 }
 
+export type CostBreakdown = {
+  label: string
+  projected: number
+  actual: number
+  variance: number
+}
+
+export type CostSummary = {
+  totalPlanned: number
+  pendingPlanned: number
+  recordedCount: number
+  pendingCount: number
+  projected: number
+  actual: number
+  variance: number
+  variancePercentage: number | null
+  fixed: CostBreakdown
+  variable: CostBreakdown
+  categories: CostBreakdown[]
+  months: CostBreakdown[]
+}
+
+/** Zero actual amount means the cost has not been accounted for yet. */
+export function isRecordedCost(cost: Cost): boolean {
+  return cost.actualAmount > 0
+}
+
+/** Compare only accounted costs against their own planned amounts. */
+export function summarizeCosts(costs: Cost[]): CostSummary {
+  const fixed = { label: 'Fixed costs', projected: 0, actual: 0, variance: 0 }
+  const variable = { label: 'Variable costs', projected: 0, actual: 0, variance: 0 }
+  const categories = new Map<string, CostBreakdown>()
+  const months = new Map<string, CostBreakdown>()
+  let totalPlanned = 0
+  let pendingPlanned = 0
+  let pendingCount = 0
+
+  for (const cost of costs) {
+    totalPlanned += cost.projectedAmount
+    if (!isRecordedCost(cost)) {
+      pendingPlanned += cost.projectedAmount
+      pendingCount += 1
+      continue
+    }
+    const type = cost.costType === 'FIXED' ? fixed : variable
+    const category = categories.get(cost.category) ?? { label: cost.category, projected: 0, actual: 0, variance: 0 }
+    const monthKey = new Date(cost.date).toISOString().slice(0, 7)
+    const month = months.get(monthKey) ?? { label: monthKey, projected: 0, actual: 0, variance: 0 }
+    for (const item of [type, category, month]) {
+      item.projected += cost.projectedAmount
+      item.actual += cost.actualAmount
+      item.variance = item.actual - item.projected
+    }
+    categories.set(cost.category, category)
+    months.set(monthKey, month)
+  }
+
+  const projected = fixed.projected + variable.projected
+  const actual = fixed.actual + variable.actual
+  return {
+    totalPlanned,
+    pendingPlanned,
+    recordedCount: costs.length - pendingCount,
+    pendingCount,
+    projected,
+    actual,
+    variance: actual - projected,
+    variancePercentage: projected > 0 ? ((actual - projected) / projected) * 100 : null,
+    fixed,
+    variable,
+    categories: [...categories.values()].sort((a, b) => b.actual - a.actual || a.label.localeCompare(b.label)),
+    months: [...months.values()].sort((a, b) => a.label.localeCompare(b.label)),
+  }
+}
+
 export function calculateTotalInvestedCapital(initialInvestment: number, contributions: CapitalContribution[]): number {
   return initialInvestment + contributions.reduce((sum, c) => sum + c.amount, 0);
 }
@@ -33,7 +108,7 @@ export function calculateProjectedFixedCosts(costs: Cost[]): number {
 }
 
 export function calculateActualFixedCosts(costs: Cost[]): number {
-  return costs.filter(c => c.costType === 'FIXED').reduce((sum, c) => sum + c.actualAmount, 0);
+  return costs.filter(c => c.costType === 'FIXED' && isRecordedCost(c)).reduce((sum, c) => sum + c.actualAmount, 0);
 }
 
 export function calculateProjectedVariableCosts(costs: Cost[]): number {
@@ -41,7 +116,7 @@ export function calculateProjectedVariableCosts(costs: Cost[]): number {
 }
 
 export function calculateActualVariableCosts(costs: Cost[]): number {
-  return costs.filter(c => c.costType === 'VARIABLE').reduce((sum, c) => sum + c.actualAmount, 0);
+  return costs.filter(c => c.costType === 'VARIABLE' && isRecordedCost(c)).reduce((sum, c) => sum + c.actualAmount, 0);
 }
 
 export function calculateProjectedCosts(costs: Cost[]): number {
@@ -125,6 +200,7 @@ export function calculateCashFlow(investment: InvestmentWithDetails): CashFlowEn
   }
   
   for (const c of investment.costs) {
+    if (!isRecordedCost(c)) continue;
     const entry = getEntry(new Date(c.date));
     if (c.costType === 'FIXED') {
       entry.fixedCosts += c.actualAmount;

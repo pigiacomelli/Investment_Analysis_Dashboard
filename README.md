@@ -9,6 +9,8 @@ It helps you manage multiple investments, track costs and revenue, analyze varia
 - Multi-investment portfolio tracking
 - Projected vs actual comparison
 - Revenue, cost, and profit analysis
+- Planned vs Actual Costs tab with cost variance, category mix, and monthly trends
+- Revenue variance and actual profit margin metrics
 - Capital contribution tracking
 - ROI and variance metrics
 - Cash flow monitoring
@@ -40,6 +42,8 @@ The app stores its data locally and exposes a dashboard for analyzing:
 - portfolio-level metrics
 - scenario-based risk estimation
 
+Each cost row is one dated occurrence. The recurrence field describes the row; it does not automatically create future costs. An actual cost of zero, including a blank actual field, is treated as **None / pending**. Pending costs remain in the total plan, but are excluded from recorded totals, charts, and cost variance. Variance compares only recorded costs with their matching planned amounts; a positive value means spending exceeded that matched plan.
+
 ## Getting Started
 
 ### Prerequisites
@@ -61,6 +65,8 @@ npm install
 npm run db:migrate
 npm run db:seed
 ```
+
+`npm run db:seed` replaces the existing local investment records with demo data. Skip it if you already have data you want to keep.
 
 ### Run the app locally
 

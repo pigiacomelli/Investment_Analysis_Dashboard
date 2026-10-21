@@ -17,6 +17,7 @@ import {
   calculateVariance,
   calculatePortfolioROI,
   calculateCashFlow,
+  summarizeCosts,
   InvestmentWithDetails
 } from './index';
 import { formatPercentage } from '../utils/format';
@@ -179,5 +180,54 @@ describe('Finance calculations', () => {
     expect(formatPercentage(550)).toBe('550.00%');
     expect(formatPercentage(50)).toBe('50.00%');
     expect(formatPercentage(0)).toBe('0.00%');
+  });
+
+  it('15. groups planned and actual costs by type, category and month', () => {
+    const rows = [
+      { category: 'Hosting', costType: 'FIXED', projectedAmount: 100, actualAmount: 130, date: d1 },
+      { category: 'Hosting', costType: 'FIXED', projectedAmount: 50, actualAmount: 40, date: d2 },
+      { category: 'Marketing', costType: 'VARIABLE', projectedAmount: 0, actualAmount: 60, date: d2 },
+    ] as Cost[];
+    const result = summarizeCosts(rows);
+    expect(result.projected).toBe(150);
+    expect(result.actual).toBe(230);
+    expect(result.variance).toBe(80);
+    expect(result.variancePercentage).toBeCloseTo(53.333333);
+    expect(result.fixed).toMatchObject({ projected: 150, actual: 170, variance: 20 });
+    expect(result.variable).toMatchObject({ projected: 0, actual: 60, variance: 60 });
+    expect(result.categories).toEqual([
+      { label: 'Hosting', projected: 150, actual: 170, variance: 20 },
+      { label: 'Marketing', projected: 0, actual: 60, variance: 60 },
+    ]);
+    expect(result.months).toEqual([
+      { label: '2024-01', projected: 100, actual: 130, variance: 30 },
+      { label: '2024-02', projected: 50, actual: 100, variance: 50 },
+    ]);
+  });
+
+  it('16. does not invent a variance percentage without a planned baseline', () => {
+    expect(summarizeCosts([]).variancePercentage).toBeNull();
+    expect(summarizeCosts([{ category: 'Unexpected', costType: 'VARIABLE', projectedAmount: 0, actualAmount: 25, date: d1 }] as Cost[]).variancePercentage).toBeNull();
+  });
+
+  it('17. excludes unaccounted zero costs from actual comparisons while keeping the full plan', () => {
+    const rows = [
+      { category: 'Hosting', costType: 'FIXED', projectedAmount: 100, actualAmount: 120, date: d1 },
+      { category: 'Marketing', costType: 'VARIABLE', projectedAmount: 500, actualAmount: 0, date: d2 },
+    ] as Cost[];
+    const result = summarizeCosts(rows);
+    expect(result).toMatchObject({ totalPlanned: 600, pendingPlanned: 500, projected: 100, actual: 120, variance: 20, recordedCount: 1, pendingCount: 1 });
+    expect(result.variancePercentage).toBe(20);
+    expect(result.categories).toEqual([{ label: 'Hosting', projected: 100, actual: 120, variance: 20 }]);
+    expect(result.months).toEqual([{ label: '2024-01', projected: 100, actual: 120, variance: 20 }]);
+    expect(calculateProjectedCosts(rows)).toBe(600);
+    expect(calculateActualCosts(rows)).toBe(120);
+  });
+
+  it('18. reports no comparison and no cash-flow month when every cost is pending', () => {
+    const rows = [{ category: 'Hosting', costType: 'FIXED', projectedAmount: 100, actualAmount: 0, date: d2 }] as Cost[];
+    expect(summarizeCosts(rows)).toMatchObject({ totalPlanned: 100, projected: 0, actual: 0, variance: 0, variancePercentage: null, recordedCount: 0, pendingCount: 1, categories: [], months: [] });
+    const investment = { startDate: null, initialInvestment: 0, capitalContributions: [], revenues: [], costs: rows } as unknown as InvestmentWithDetails;
+    expect(calculateCashFlow(investment)).toEqual([]);
   });
 });
