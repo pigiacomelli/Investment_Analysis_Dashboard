@@ -91,6 +91,57 @@ export function summarizeCosts(costs: Cost[]): CostSummary {
   }
 }
 
+export function isRecordedRevenue(revenue: Revenue): boolean {
+  return revenue.actualAmount > 0
+}
+
+export type Forecast = {
+  /** Cash already spent (recorded actual costs). */
+  costsPaid: number
+  /** Planned costs still to be paid. */
+  costsRemaining: number
+  /** Estimated cost at completion = paid + remaining. Also the break-even sale price. */
+  estimatedCost: number
+  /** Revenue already received. */
+  revenueReceived: number
+  /** Planned revenue still to be received. */
+  revenueRemaining: number
+  expectedRevenue: number
+  expectedProfit: number
+  /** Expected profit / estimated cost, in %. Null when there is no cost. */
+  expectedROI: number | null
+  /** (expected revenue - break-even) / expected revenue, in %. How far revenue can fall before losing money. */
+  safetyMargin: number | null
+  /** True when every revenue and cost line has been realised. */
+  isRealised: boolean
+}
+
+/**
+ * Investor view: realised amounts are facts, everything not yet realised uses the plan.
+ * Avoids the misleading "actual profit" of an asset that was bought but not yet sold.
+ */
+export function calculateForecast(revenues: Revenue[], costs: Cost[]): Forecast {
+  const costsPaid = costs.filter(isRecordedCost).reduce((s, c) => s + c.actualAmount, 0)
+  const costsRemaining = costs.filter(c => !isRecordedCost(c)).reduce((s, c) => s + c.projectedAmount, 0)
+  const revenueReceived = revenues.filter(isRecordedRevenue).reduce((s, r) => s + r.actualAmount, 0)
+  const revenueRemaining = revenues.filter(r => !isRecordedRevenue(r)).reduce((s, r) => s + r.projectedAmount, 0)
+  const estimatedCost = costsPaid + costsRemaining
+  const expectedRevenue = revenueReceived + revenueRemaining
+  const expectedProfit = expectedRevenue - estimatedCost
+  return {
+    costsPaid,
+    costsRemaining,
+    estimatedCost,
+    revenueReceived,
+    revenueRemaining,
+    expectedRevenue,
+    expectedProfit,
+    expectedROI: estimatedCost > 0 ? (expectedProfit / estimatedCost) * 100 : null,
+    safetyMargin: expectedRevenue > 0 ? ((expectedRevenue - estimatedCost) / expectedRevenue) * 100 : null,
+    isRealised: costsRemaining === 0 && revenueRemaining === 0 && (costsPaid > 0 || revenueReceived > 0),
+  }
+}
+
 export function calculateTotalInvestedCapital(initialInvestment: number, contributions: CapitalContribution[]): number {
   return initialInvestment + contributions.reduce((sum, c) => sum + c.amount, 0);
 }

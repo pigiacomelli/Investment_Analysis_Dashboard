@@ -78,7 +78,37 @@ describe('Monte Carlo Simulation', () => {
   it('rejects invalid volatility and iteration counts', () => {
     expect(() => runMonteCarloSimulation(mockInvestment, { revenueVolatility: -0.1 })).toThrow(RangeError)
     expect(() => runMonteCarloSimulation(mockInvestment, { fixedCostVolatility: 1.1 })).toThrow(RangeError)
+    expect(() => runMonteCarloSimulation(mockInvestment, { holdingPeriodVolatility: 1.2 })).toThrow(RangeError)
+    expect(() => runMonteCarloSimulation(mockInvestment, { expectedMonthsToSell: 0 })).toThrow(RangeError)
+    expect(() => runMonteCarloSimulation(mockInvestment, { cdiAnnualRate: -0.05 })).toThrow(RangeError)
     expect(() => runMonteCarloSimulation(mockInvestment, { iterations: 0 })).toThrow(RangeError)
     expect(() => runMonteCarloSimulation(mockInvestment, { iterations: 1.5 })).toThrow(RangeError)
+  })
+
+  it('calculates CDI benchmark, holding time limit, and tail risk metrics', () => {
+    const result = runMonteCarloSimulation(mockInvestment, {
+      revenueVolatility: 0.2,
+      variableCostVolatility: 0.2,
+      fixedCostVolatility: 0,
+      holdingPeriodVolatility: 0.25,
+      expectedMonthsToSell: 6,
+      cdiAnnualRate: 0.12,
+      iterations: 5_000,
+      seed: 99,
+    })
+
+    expect(result.cdiAnnualRate).toBe(0.12)
+    expect(result.expectedMonthsToSell).toBe(6)
+    expect(result.p90MonthsToSell).toBeGreaterThan(6)
+    expect(result.cdiMonthlyRatePercent).toBeCloseTo(((1.12 ** (1 / 12)) - 1) * 100, 5)
+    expect(result.cdiBenchmarkProfit).toBeGreaterThan(0)
+    expect(result.probabilityOfBeatingCDI).toBeGreaterThan(80)
+    expect(result.probabilityOfBeatingCDI).toBeLessThanOrEqual(result.probabilityOfProfit)
+    expect(result.cdiEquivalentPercent).toBeGreaterThan(100)
+    expect(result.maxMonthsToBeatCDI).not.toBeNull()
+    expect(result.maxMonthsToBeatCDI!).toBeGreaterThan(60)
+    expect(result.vaR95).toBeLessThanOrEqual(result.p10)
+    expect(result.cVaR95).toBeLessThanOrEqual(result.vaR95)
+    expect(result.sharpeRatioVsCDI).toBeGreaterThan(1)
   })
 })

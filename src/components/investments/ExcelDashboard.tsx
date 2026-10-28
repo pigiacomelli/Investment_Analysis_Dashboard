@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { InvestmentWithDetails, calculateProjectedProfit, calculateActualProfit, calculateActualROI, calculateProjectedROI, calculateProjectedRevenue, calculateActualRevenue, calculateProjectedCosts, calculateActualCosts, summarizeCosts, isRecordedCost } from '@/lib/finance';
+import { InvestmentWithDetails, calculateProjectedProfit, calculateActualProfit, calculateActualROI, calculateProjectedROI, calculateProjectedRevenue, calculateActualRevenue, calculateProjectedCosts, calculateActualCosts, summarizeCosts, isRecordedCost, calculateForecast } from '@/lib/finance';
 import { formatCurrency, formatPercentage, formatDate } from '@/lib/utils/format';
 import { createCost, deleteCost, updateCost, createRevenue, deleteRevenue, updateRevenue, updateInvestment } from '@/lib/actions';
 import { cn } from '@/lib/utils';
@@ -58,6 +58,7 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
   const projCosts = calculateProjectedCosts(costs);
   const actCosts = calculateActualCosts(costs);
   const costSummary = summarizeCosts(costs);
+  const forecast = calculateForecast(revenues, costs);
 
   const projROI = calculateProjectedROI(revenues, costs);
   const actROI = calculateActualROI(revenues, costs);
@@ -179,6 +180,43 @@ export function ExcelDashboard({ investment }: { investment: InvestmentWithDetai
       </nav>
 
       {activeTab === 'overview' && <>
+      {/* Investor view: realised amounts are facts, the rest follows the plan */}
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Investor view · forecast at completion</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            title="Expected Profit"
+            value={formatCurrency(forecast.expectedProfit, currency)}
+            description={`${formatCurrency(forecast.expectedRevenue, currency)} revenue - ${formatCurrency(forecast.estimatedCost, currency)} cost`}
+            subtext={forecast.revenueRemaining > 0 ? 'Sale not yet realised' : forecast.isRealised ? 'Fully realised' : undefined}
+            trend={forecast.expectedProfit > 0 ? 'up' : forecast.expectedProfit < 0 ? 'down' : 'neutral'}
+            icon={Activity}
+          />
+          <KpiCard
+            title="Expected ROI"
+            value={forecast.expectedROI === null ? '—' : formatPercentage(forecast.expectedROI)}
+            description="Expected profit / total cost at completion"
+            trend={forecast.expectedROI === null ? 'neutral' : forecast.expectedROI > 0 ? 'up' : 'down'}
+            icon={TrendingUp}
+          />
+          <KpiCard
+            title="Break-even Revenue"
+            value={formatCurrency(forecast.estimatedCost, currency)}
+            description="Minimum revenue to avoid a loss"
+            subtext={forecast.safetyMargin === null ? undefined : `${formatPercentage(forecast.safetyMargin)} safety margin vs expected revenue`}
+            trend={forecast.safetyMargin === null ? 'neutral' : forecast.safetyMargin >= 10 ? 'up' : 'down'}
+            icon={DollarSign}
+          />
+          <KpiCard
+            title="Cash Deployed"
+            value={formatCurrency(forecast.costsPaid, currency)}
+            description={`${formatCurrency(forecast.costsRemaining, currency)} still to pay`}
+            subtext={forecast.revenueReceived > 0 ? `${formatCurrency(forecast.revenueReceived, currency)} already received` : 'No revenue received yet'}
+            icon={TrendingDown}
+          />
+        </div>
+      </div>
+
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard 
