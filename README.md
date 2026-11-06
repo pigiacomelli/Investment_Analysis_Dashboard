@@ -42,7 +42,21 @@ The app stores its data locally and exposes a dashboard for analyzing:
 - portfolio-level metrics
 - scenario-based risk estimation
 
-Each cost row is one dated occurrence. The recurrence field describes the row; it does not automatically create future costs. An actual cost of zero, including a blank actual field, is treated as **None / pending**. Pending costs remain in the total plan, but are excluded from recorded totals, charts, and cost variance. Variance compares only recorded costs with their matching planned amounts; a positive value means spending exceeded that matched plan.
+## Language
+
+English is the default. Use the **Language** selector in the header to switch to **Português**. The preference is stored in this browser for one year and applies to all screens, metric explanations, forms, confirmations, dates, numbers and currencies. Project names and recorded financial values are preserved.
+
+## Metrics and interpretation
+
+The detail view, project list and portfolio share the same financial definitions. Forecasts combine recorded actuals with pending planned values. Recorded operating cash flow is shown separately from final profit; funding enters cash balance and is not counted again as an expense. ROI uses total project costs, with unavailable ratios shown as a dash rather than zero.
+
+Each cost row is one dated occurrence; recurrence is informational. A positive actual amount settles the entire line. Blank or zero actual amounts remain pending unless **Liquidado a zero** is checked. Split partial payments or receipts into settled and pending rows. Cost variance matches only recorded rows with their own planned amounts.
+
+The CDI planning panel offers per-project saved duration and hypothetical annual benchmark rate, compound monthly return, opportunity cost, minimum revenue to match the benchmark, price headroom and months until CDI matches total project ROI. Defaults are examples, not a live quote. It assumes total cost upfront and revenue at the end, with a constant gross benchmark rate. It is not historical CDI or dated NPV/IRR. Portfolio totals are grouped by currency and use cost-weighted aggregate ROI.
+
+The risk simulation varies only pending amounts, locks realised lines (and duration for fully settled projects), and compares each scenario with CDI using its own cost and duration. Tail results are labelled as profit percentiles rather than falsely presenting positive profits as VaR losses.
+
+Read [the practical metrics guide](docs/METRICS.md), or open **Como usar** in a project.
 
 ## Getting Started
 
@@ -62,7 +76,9 @@ npm install
 ### Database setup
 
 ```bash
-npm run db:migrate
+npx prisma migrate deploy
+npx prisma generate
+# Optional demo data for an empty workspace:
 npm run db:seed
 ```
 
@@ -84,7 +100,9 @@ npm run build
 npm run start
 npm run test
 npm run lint
-npm run db:migrate
+npx prisma migrate deploy
+npx prisma generate
+# Optional demo data for an empty workspace:
 npm run db:seed
 npm run db:studio
 ```

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from './db'
 import {
   investmentSchema,
+  analysisSettingsSchema,
   costSchema,
   revenueSchema,
   capitalContributionSchema,
@@ -12,6 +13,7 @@ import {
 function revalidateInvestment(id?: string) {
   revalidatePath('/')
   revalidatePath('/investments')
+  revalidatePath('/analytics')
   if (id) {
     revalidatePath(`/investments/${id}`)
   }
@@ -142,5 +144,15 @@ export async function deleteCapitalContribution(id: string, investmentId: string
     where: { id },
   })
   
+  revalidateInvestment(investmentId)
+}
+
+export async function saveAnalysisSettings(investmentId: string, formData: FormData) {
+  const data = analysisSettingsSchema.parse(Object.fromEntries(formData.entries()))
+  await prisma.analysisSettings.upsert({
+    where: { investmentId },
+    create: { investmentId, ...data },
+    update: data,
+  })
   revalidateInvestment(investmentId)
 }

@@ -1,23 +1,25 @@
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number, currency: string = 'USD', locale: string = 'en'): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
   }).format(amount)
 }
 
-export function formatPercentage(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatPercentage(value: number | null, locale: string = 'en'): string {
+  if (value === null || !Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat(locale, {
     style: 'percent',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value / 100)
 }
 
-export function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString('en-US', {
+export function formatDate(date: Date | string, locale: string = 'en'): string {
+  return new Date(date).toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: 'UTC',
   })
 }
 

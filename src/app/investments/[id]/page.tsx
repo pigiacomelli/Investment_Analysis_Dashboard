@@ -9,6 +9,7 @@ export default async function InvestmentDetailPage({ params }: { params: Promise
   const investment = await prisma.investment.findUnique({
     where: { id: resolvedParams.id },
     include: {
+      analysisSettings: true,
       costs: { orderBy: { date: 'asc' } },
       revenues: { orderBy: { date: 'asc' } },
       capitalContributions: { orderBy: { date: 'asc' } },

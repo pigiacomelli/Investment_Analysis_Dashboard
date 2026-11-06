@@ -2,7 +2,9 @@ import {
   InvestmentWithDetails,
   isRecordedCost,
   isRecordedRevenue,
+  calculateForecast,
 } from './index'
+import { calculateBenchmark } from './benchmark'
 
 export interface MonteCarloAssumptions {
   revenueVolatility: number
@@ -28,53 +30,25 @@ export interface HistogramBin {
 }
 
 export interface MonteCarloResult {
-  p10: number
-  p50: number
-  p90: number
-  roiP10: number
-  roiP50: number
-  roiP90: number
-  baseProfit: number
-  baseROI: number
-  meanProfit: number
-  meanROI: number
+  p10: number; p50: number; p90: number
+  roiP10: number | null; roiP50: number | null; roiP90: number | null
+  baseProfit: number; baseROI: number | null
+  meanProfit: number; meanROI: number | null
+  meanCosts: number; meanRevenue: number
   profitStdDev: number
-  probabilityOfProfit: number
-  probabilityOfLoss: number
-  breakEvenRevenue: number
-  minProfit: number
-  maxProfit: number
-  histogram: HistogramBin[]
-  iterations: number
-  seed: number
-  /** 5th percentile profit (Value at Risk 95% confidence). */
-  vaR95: number
-  /** Average profit of the worst 5% scenarios (Expected Shortfall / CVaR 95%). */
-  cVaR95: number
-  /** Expected holding/selling time in months used in the simulation. */
-  expectedMonthsToSell: number
-  /** P90 (pessimistic slow sale) time to sell in months. */
-  p90MonthsToSell: number
-  /** Annual CDI benchmark rate (decimal, e.g. 0.1075). */
-  cdiAnnualRate: number
-  /** Equivalent monthly compound CDI rate in percentage (e.g. 0.85%). */
-  cdiMonthlyRatePercent: number
-  /** Profit that the same capital would earn in CDI over the expected holding period. */
-  cdiBenchmarkProfit: number
-  /** ROI (%) that CDI yields over the expected holding period. */
-  cdiBenchmarkROI: number
-  /** Percentage of simulated scenarios that beat the CDI return for their holding time. */
-  probabilityOfBeatingCDI: number
-  /** Average profit minus CDI opportunity cost across all scenarios. */
-  meanExcessProfitOverCDI: number
-  /** Compound monthly ROI (%) of the project at the expected profit and holding time. */
-  meanMonthlyROI: number
-  /** Project return expressed as a percentage of the CDI return (e.g., 220% of CDI). */
-  cdiEquivalentPercent: number
-  /** Maximum months the sale can take before CDI compound return surpasses expected project profit. */
+  probabilityOfProfit: number; probabilityOfLoss: number; probabilityOfBreakEven: number
+  breakEvenRevenue: number; minProfit: number; maxProfit: number
+  histogram: HistogramBin[]; iterations: number; seed: number
+  profitP05: number; meanWorst5Profit: number
+  expectedMonthsToSell: number; p90MonthsToSell: number
+  cdiAnnualRate: number; cdiMonthlyRatePercent: number
+  cdiBenchmarkProfit: number | null; cdiBenchmarkROI: number
+  probabilityOfBeatingCDI: number | null
+  meanExcessProfitOverCDI: number | null
+  monthlyROIOnMeanCosts: number | null
+  returnMultipleVsCDI: number | null
   maxMonthsToBeatCDI: number | null
-  /** Sharpe-like ratio measuring how many standard deviations the expected profit is above CDI. */
-  sharpeRatioVsCDI: number
+  excessToRiskRatio: number | null
 }
 
 const DEFAULT_ASSUMPTIONS: MonteCarloAssumptions = {
@@ -198,7 +172,8 @@ function validateAssumptions(assumptions: MonteCarloAssumptions): void {
 /**
  * Simulates profit, return on total project cost, time to sell, and comparison against CDI.
  *
- * Each volatility is the standard deviation relative to its projected total.
+ * Each volatility is the standard deviation relative to its pending projected total.
+ * Settled projects also have fixed duration; a cap cannot erase receipts.
  * Revenue, fixed costs and variable costs are sampled independently and cannot
  * become negative. A deterministic seed makes equal inputs reproducible.
  */
@@ -210,9 +185,8 @@ export function runMonteCarloSimulation(
   validateAssumptions(assumptions)
 
   const expectedMonthsToSell = assumptions.expectedMonthsToSell ?? 6
-  const holdingPeriodVolatility = assumptions.holdingPeriodVolatility ?? 0.25
+  const holdingPeriodVolatility = calculateForecast(investment.revenues, investment.costs).isRealised ? 0 : assumptions.holdingPeriodVolatility ?? 0.25
   const cdiAnnualRate = assumptions.cdiAnnualRate ?? 0.1075
-  const cdiMonthlyRate = (1 + cdiAnnualRate) ** (1 / 12) - 1
 
   // Investor logic: money already paid/received is a fact. Only the unrealised part is uncertain.
   const sumBy = <T,>(items: T[], pick: (item: T) => number) => items.reduce((total, item) => total + pick(item), 0)
@@ -223,13 +197,16 @@ export function runMonteCarloSimulation(
   const receivedRevenue = sumBy(investment.revenues.filter(isRecordedRevenue), r => r.actualAmount)
   const pendingRevenue = sumBy(investment.revenues.filter(r => !isRecordedRevenue(r)), r => r.projectedAmount)
 
-  const baseRevenue = receivedRevenue + pendingRevenue
+  if (assumptions.maxRevenue !== undefined && (!Number.isFinite(assumptions.maxRevenue) || assumptions.maxRevenue < receivedRevenue || assumptions.maxRevenue < 0)) {
+    throw new RangeError('Revenue ceiling must be finite, nonnegative and not below revenue already received')
+  }
+  const baseRevenue = assumptions.maxRevenue === undefined ? receivedRevenue + pendingRevenue
+    : Math.min(receivedRevenue + pendingRevenue, assumptions.maxRevenue)
   const baseFixedCosts = paidFixed + pendingFixed
   const baseVariableCosts = paidVariable + pendingVariable
   const baseTotalCosts = baseFixedCosts + baseVariableCosts
-  const baseCapital = baseTotalCosts > 0 ? baseTotalCosts : Math.max(0, investment.initialInvestment)
   const baseProfit = baseRevenue - baseTotalCosts
-  const baseROI = baseTotalCosts > 0 ? (baseProfit / baseTotalCosts) * 100 : 0
+  const baseROI = baseTotalCosts > 0 ? (baseProfit / baseTotalCosts) * 100 : null
   const seed = assumptions.seed ?? hashString(investment.id)
   const random = createSeededRandom(seed)
   const timeRandom = createSeededRandom((seed ^ 0x9e3779b9) >>> 0)
@@ -238,7 +215,10 @@ export function runMonteCarloSimulation(
   const returns: number[] = []
   const holdingMonthsList: number[] = []
   const excessProfitsOverCDI: number[] = []
+  const scenarioCosts: number[] = []
+  const scenarioRevenues: number[] = []
   let profitableScenarios = 0
+  let losingScenarios = 0
   let scenariosBeatingCDI = 0
 
   for (let index = 0; index < assumptions.iterations; index += 1) {
@@ -264,19 +244,20 @@ export function runMonteCarloSimulation(
 
     const simulatedTotalCosts = simulatedFixedCosts + simulatedVariableCosts
     const simulatedProfit = simulatedRevenue - simulatedTotalCosts
-    const simulatedROI = simulatedTotalCosts > 0 ? (simulatedProfit / simulatedTotalCosts) * 100 : 0
+    const simulatedROI = simulatedTotalCosts > 0 ? (simulatedProfit / simulatedTotalCosts) * 100 : null
 
-    const scenarioCapital = simulatedTotalCosts > 0 ? simulatedTotalCosts : baseCapital
-    const scenarioCDIReturn = scenarioCapital * ((1 + cdiMonthlyRate) ** simulatedMonths - 1)
-    const excessOverCDI = simulatedProfit - scenarioCDIReturn
-
+    const benchmark = calculateBenchmark(simulatedTotalCosts, simulatedRevenue, simulatedMonths, cdiAnnualRate)
     profits.push(simulatedProfit)
-    returns.push(simulatedROI)
+    if (simulatedROI !== null) returns.push(simulatedROI)
+    scenarioCosts.push(simulatedTotalCosts)
+    scenarioRevenues.push(simulatedRevenue)
     holdingMonthsList.push(simulatedMonths)
-    excessProfitsOverCDI.push(excessOverCDI)
-
-    if (simulatedProfit > 0) profitableScenarios += 1
-    if (simulatedProfit > scenarioCDIReturn) scenariosBeatingCDI += 1
+    if (benchmark.excessProfit !== null) {
+      excessProfitsOverCDI.push(benchmark.excessProfit)
+      if (benchmark.excessProfit > 0.005) scenariosBeatingCDI += 1
+    }
+    if (simulatedProfit > 0.005) profitableScenarios += 1
+    if (simulatedProfit < -0.005) losingScenarios += 1
   }
 
   profits.sort((first, second) => first - second)
@@ -284,72 +265,43 @@ export function runMonteCarloSimulation(
   holdingMonthsList.sort((first, second) => first - second)
 
   const meanProfit = average(profits)
-  const meanROI = average(returns)
+  const meanCosts = average(scenarioCosts)
+  const meanRevenue = average(scenarioRevenues)
   const profitStdDev = standardDeviation(profits, meanProfit)
-  const probabilityOfProfit = (profitableScenarios / assumptions.iterations) * 100
-  const probabilityOfBeatingCDI = (scenariosBeatingCDI / assumptions.iterations) * 100
-
-  // Tail risk: worst 5% scenarios (VaR 95% and CVaR 95%)
-  const vaR95 = percentile(profits, 0.05)
-  const tailCutoffCount = Math.max(1, Math.floor(profits.length * 0.05))
-  const cVaR95 = average(profits.slice(0, tailCutoffCount))
-
-  // Benchmark CDI over expected holding period
-  const cdiBenchmarkROI = ((1 + cdiMonthlyRate) ** expectedMonthsToSell - 1) * 100
-  const cdiBenchmarkProfit = baseCapital * (cdiBenchmarkROI / 100)
-
-  // Compound monthly ROI at mean ROI over expectedMonthsToSell
-  const totalReturnMultiple = 1 + meanROI / 100
-  const meanMonthlyROI = totalReturnMultiple > 0
-    ? (totalReturnMultiple ** (1 / expectedMonthsToSell) - 1) * 100
-    : -100
-
-  // Equivalent % of CDI
-  const cdiEquivalentPercent = cdiBenchmarkROI > 0 ? (meanROI / cdiBenchmarkROI) * 100 : 0
-
-  // Maximum months the asset/product can take to sell before CDI beats the expected profit
-  let maxMonthsToBeatCDI: number | null = null
-  if (meanProfit > 0 && baseCapital > 0 && cdiMonthlyRate > 0) {
-    maxMonthsToBeatCDI = Math.log(1 + meanProfit / baseCapital) / Math.log(1 + cdiMonthlyRate)
-  } else if (meanProfit <= 0) {
-    maxMonthsToBeatCDI = 0
-  }
-
-  const sharpeRatioVsCDI = profitStdDev > 0 ? (meanProfit - cdiBenchmarkProfit) / profitStdDev : 0
+  const benchmark = calculateBenchmark(meanCosts, meanRevenue, expectedMonthsToSell, cdiAnnualRate)
+  const meanExcess = excessProfitsOverCDI.length ? average(excessProfitsOverCDI) : null
+  const excessStdDev = meanExcess === null ? 0 : standardDeviation(excessProfitsOverCDI, meanExcess)
+  const tailCutoffCount = Math.max(1, Math.ceil(profits.length * 0.05))
 
   return {
-    p10: percentile(profits, 0.1),
-    p50: percentile(profits, 0.5),
-    p90: percentile(profits, 0.9),
-    roiP10: percentile(returns, 0.1),
-    roiP50: percentile(returns, 0.5),
-    roiP90: percentile(returns, 0.9),
-    baseProfit,
-    baseROI,
-    meanProfit,
-    meanROI,
-    profitStdDev,
-    probabilityOfProfit,
-    probabilityOfLoss: 100 - probabilityOfProfit,
+    p10: percentile(profits, 0.1), p50: percentile(profits, 0.5), p90: percentile(profits, 0.9),
+    roiP10: returns.length ? percentile(returns, 0.1) : null,
+    roiP50: returns.length ? percentile(returns, 0.5) : null,
+    roiP90: returns.length ? percentile(returns, 0.9) : null,
+    baseProfit, baseROI, meanProfit,
+    // Return on mean scenario costs, consistent with the representative benchmark comparison.
+    meanROI: meanCosts > 0 ? meanProfit / meanCosts * 100 : null,
+    meanCosts, meanRevenue, profitStdDev,
+    probabilityOfProfit: profitableScenarios / assumptions.iterations * 100,
+    probabilityOfLoss: losingScenarios / assumptions.iterations * 100,
+    probabilityOfBreakEven: (assumptions.iterations - profitableScenarios - losingScenarios) / assumptions.iterations * 100,
     breakEvenRevenue: baseTotalCosts,
-    minProfit: profits[0],
-    maxProfit: profits[profits.length - 1],
-    histogram: createHistogram(profits),
-    iterations: assumptions.iterations,
-    seed,
-    vaR95,
-    cVaR95,
+    minProfit: profits[0], maxProfit: profits[profits.length - 1],
+    histogram: createHistogram(profits), iterations: assumptions.iterations, seed,
+    profitP05: percentile(profits, 0.05),
+    meanWorst5Profit: average(profits.slice(0, tailCutoffCount)),
     expectedMonthsToSell,
     p90MonthsToSell: percentile(holdingMonthsList, 0.9),
     cdiAnnualRate,
-    cdiMonthlyRatePercent: cdiMonthlyRate * 100,
-    cdiBenchmarkProfit,
-    cdiBenchmarkROI,
-    probabilityOfBeatingCDI,
-    meanExcessProfitOverCDI: average(excessProfitsOverCDI),
-    meanMonthlyROI,
-    cdiEquivalentPercent,
-    maxMonthsToBeatCDI,
-    sharpeRatioVsCDI,
+    cdiMonthlyRatePercent: benchmark.monthlyBenchmarkPercent,
+    cdiBenchmarkProfit: benchmark.benchmarkProfit,
+    cdiBenchmarkROI: benchmark.benchmarkROIPercent,
+    probabilityOfBeatingCDI: excessProfitsOverCDI.length === assumptions.iterations ? scenariosBeatingCDI / assumptions.iterations * 100 : null,
+    meanExcessProfitOverCDI: meanExcess,
+    monthlyROIOnMeanCosts: benchmark.monthlyROI,
+    returnMultipleVsCDI: benchmark.returnMultiple,
+    maxMonthsToBeatCDI: benchmark.monthsToMatch,
+    // Dispersion of scenario excess profits, not a time-series Sharpe ratio.
+    excessToRiskRatio: meanExcess === null || excessStdDev < 1e-8 ? null : meanExcess / excessStdDev,
   }
 }

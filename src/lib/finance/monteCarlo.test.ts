@@ -42,8 +42,8 @@ describe('Monte Carlo Simulation', () => {
     expect(result.p50).toBeGreaterThan(48_000)
     expect(result.p50).toBeLessThan(52_000)
     expect(result.p90).toBeGreaterThan(result.p50)
-    expect(result.roiP10).toBeLessThan(result.roiP50)
-    expect(result.roiP90).toBeGreaterThan(result.roiP50)
+    expect(result.roiP10).toBeLessThan(result.roiP50!)
+    expect(result.roiP90).toBeGreaterThan(result.roiP50!)
     expect(result.probabilityOfProfit + result.probabilityOfLoss).toBeCloseTo(100, 10)
   })
 
@@ -104,11 +104,55 @@ describe('Monte Carlo Simulation', () => {
     expect(result.cdiBenchmarkProfit).toBeGreaterThan(0)
     expect(result.probabilityOfBeatingCDI).toBeGreaterThan(80)
     expect(result.probabilityOfBeatingCDI).toBeLessThanOrEqual(result.probabilityOfProfit)
-    expect(result.cdiEquivalentPercent).toBeGreaterThan(100)
+    expect(result.returnMultipleVsCDI).toBeGreaterThan(1)
     expect(result.maxMonthsToBeatCDI).not.toBeNull()
     expect(result.maxMonthsToBeatCDI!).toBeGreaterThan(60)
-    expect(result.vaR95).toBeLessThanOrEqual(result.p10)
-    expect(result.cVaR95).toBeLessThanOrEqual(result.vaR95)
-    expect(result.sharpeRatioVsCDI).toBeGreaterThan(1)
+    expect(result.profitP05).toBeLessThanOrEqual(result.p10)
+    expect(result.meanWorst5Profit).toBeLessThanOrEqual(result.profitP05)
+    expect(result.excessToRiskRatio).toBeGreaterThan(1)
+  })
+})
+
+describe('Simulation accounting and benchmark invariants', () => {
+  const zeroRisk = { revenueVolatility: 0, variableCostVolatility: 0, fixedCostVolatility: 0, holdingPeriodVolatility: 0, iterations: 100 }
+  it('keeps realised amounts fixed, even with nonzero volatility', () => {
+    const settled = { ...mockInvestment, revenues: [{ projectedAmount: 100, actualAmount: 120 }], costs: [{ costType: 'FIXED', projectedAmount: 80, actualAmount: 100 }] } as InvestmentWithDetails
+    const result = runMonteCarloSimulation(settled, { ...zeroRisk, revenueVolatility: 0.5, fixedCostVolatility: 0.5, holdingPeriodVolatility: 0.5 })
+    expect(result.meanProfit).toBe(20)
+    expect(result.profitStdDev).toBe(0)
+    expect(result.p90MonthsToSell).toBe(6)
+    expect(result.excessToRiskRatio).toBeNull()
+  })
+  it('counts zero profit as break-even, and has no risk ratio without dispersion', () => {
+    const equal = { ...mockInvestment, revenues: [{ projectedAmount: 50_000, actualAmount: 0 }] } as InvestmentWithDetails
+    const result = runMonteCarloSimulation(equal, zeroRisk)
+    expect(result.probabilityOfProfit).toBe(0)
+    expect(result.probabilityOfLoss).toBe(0)
+    expect(result.probabilityOfBreakEven).toBe(100)
+    expect(result.excessToRiskRatio).toBeNull()
+    expect(result.maxMonthsToBeatCDI).toBe(0)
+  })
+  it('does not invent an ROI or benchmark capital from funding when there are no costs', () => {
+    const result = runMonteCarloSimulation({ ...mockInvestment, costs: [] }, zeroRisk)
+    expect(result.baseROI).toBeNull()
+    expect(result.meanROI).toBeNull()
+    expect(result.probabilityOfBeatingCDI).toBeNull()
+    expect(result.cdiBenchmarkProfit).toBeNull()
+  })
+  it('applies a ceiling consistently to baseline and scenarios without erasing receipts', () => {
+    const result = runMonteCarloSimulation(mockInvestment, { ...zeroRisk, maxRevenue: 60_000 })
+    expect(result.baseProfit).toBe(10_000)
+    expect(result.meanProfit).toBe(10_000)
+    expect(result.baseROI).toBe(20)
+    const received = { ...mockInvestment, revenues: [{ projectedAmount: 100_000, actualAmount: 80_000 }] } as InvestmentWithDetails
+    expect(() => runMonteCarloSimulation(received, { maxRevenue: 70_000 })).toThrow(RangeError)
+    expect(() => runMonteCarloSimulation(mockInvestment, { maxRevenue: NaN })).toThrow(RangeError)
+  })
+  it('matches an independent deterministic compound-interest example', () => {
+    const result = runMonteCarloSimulation(mockInvestment, { ...zeroRisk, expectedMonthsToSell: 12, cdiAnnualRate: 0.12 })
+    expect(result.cdiBenchmarkProfit).toBeCloseTo(6000, 7)
+    expect(result.meanExcessProfitOverCDI).toBeCloseTo(44000, 7)
+    expect(result.maxMonthsToBeatCDI).toBeCloseTo(12 * Math.log(2) / Math.log(1.12), 7)
+    expect(result.probabilityOfBeatingCDI).toBe(100)
   })
 })

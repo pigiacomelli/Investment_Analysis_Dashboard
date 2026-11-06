@@ -1,5 +1,7 @@
 'use client';
 
+import { useI18n } from '@/lib/i18n/client'
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Database, Plus, Briefcase, LayoutDashboard, ChartNoAxesCombined, FolderKanban } from 'lucide-react';
@@ -10,6 +12,7 @@ interface SidebarClientProps {
 }
 
 export function SidebarClient({ investments }: SidebarClientProps) {
+  const { t } = useI18n()
   const pathname = usePathname();
 
   return (
@@ -21,17 +24,17 @@ export function SidebarClient({ investments }: SidebarClientProps) {
         </Link>
       </div>
 
-      <nav className="space-y-1 px-2 pb-4" aria-label="Main navigation">
-        <Link href="/investments" className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted', pathname === '/investments' && 'bg-primary/10 text-primary')}><FolderKanban className="h-4 w-4" /> All Projects</Link>
-        <Link href="/analytics" className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted', pathname === '/analytics' && 'bg-primary/10 text-primary')}><ChartNoAxesCombined className="h-4 w-4" /> Portfolio Analytics</Link>
+      <nav className="space-y-1 px-2 pb-4" aria-label={t("Main navigation")}>
+        <Link href="/investments" className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted', pathname === '/investments' && 'bg-primary/10 text-primary')}><FolderKanban className="h-4 w-4" />{" "}{t("All projects")}</Link>
+        <Link href="/analytics" className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted', pathname === '/analytics' && 'bg-primary/10 text-primary')}><ChartNoAxesCombined className="h-4 w-4" />{" "}{t("Portfolio analytics")}</Link>
       </nav>
 
       <div className="px-4 py-2 flex items-center justify-between group">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</h2>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("Projects")}</h2>
         <Link 
           href="/investments/new" 
           className="text-muted-foreground hover:text-primary hover:bg-muted p-1 rounded transition-colors"
-          title="New Project"
+          title={t("New Project")}
         >
           <Plus className="w-4 h-4" />
         </Link>
@@ -41,10 +44,8 @@ export function SidebarClient({ investments }: SidebarClientProps) {
         {investments.length === 0 ? (
           <div className="px-2 py-8 flex flex-col items-center text-center text-sm text-muted-foreground">
             <LayoutDashboard className="w-8 h-8 mb-2 opacity-20" />
-            <p>No projects yet.</p>
-            <Link href="/investments/new" className="text-primary hover:underline mt-2">
-              Create your first
-            </Link>
+            <p>{t("No projects yet.")}</p>
+            <Link href="/investments/new" className="text-primary hover:underline mt-2">{t("Create your first")}{" "}</Link>
           </div>
         ) : (
           investments.map((inv) => {
@@ -76,8 +77,8 @@ export function SidebarClient({ investments }: SidebarClientProps) {
             CS
           </div>
           <div>
-            <p className="text-sm font-medium">Local Workspace</p>
-            <p className="text-xs text-muted-foreground">SQLite Storage</p>
+            <p className="text-sm font-medium">{t("Local Workspace")}</p>
+            <p className="text-xs text-muted-foreground">{t("SQLite Storage")}</p>
           </div>
         </div>
       </div>

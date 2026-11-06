@@ -1,9 +1,10 @@
-import { Investment, Cost, Revenue, CapitalContribution } from '@prisma/client'
+import type { Investment, Cost, Revenue, CapitalContribution, AnalysisSettings } from '@prisma/client'
 
 export type InvestmentWithDetails = Investment & {
   costs: Cost[]
   revenues: Revenue[]
   capitalContributions: CapitalContribution[]
+  analysisSettings?: AnalysisSettings | null
 }
 
 export type CashFlowEntry = {
@@ -14,6 +15,8 @@ export type CashFlowEntry = {
   variableCosts: number;
   netCashFlow: number;
   cumulativeCashFlow: number;
+  cashFlowWithFunding: number;
+  cashBalance: number;
 }
 
 export type CostBreakdown = {
@@ -38,9 +41,9 @@ export type CostSummary = {
   months: CostBreakdown[]
 }
 
-/** Zero actual amount means the cost has not been accounted for yet. */
+/** Positive actuals are recorded; an explicit flag can settle a line at zero. */
 export function isRecordedCost(cost: Cost): boolean {
-  return cost.actualAmount > 0
+  return cost.actualAmount > 0 || cost.settledAtZero === true
 }
 
 /** Compare only accounted costs against their own planned amounts. */
@@ -92,7 +95,7 @@ export function summarizeCosts(costs: Cost[]): CostSummary {
 }
 
 export function isRecordedRevenue(revenue: Revenue): boolean {
-  return revenue.actualAmount > 0
+  return revenue.actualAmount > 0 || revenue.settledAtZero === true
 }
 
 export type Forecast = {
@@ -114,6 +117,9 @@ export type Forecast = {
   safetyMargin: number | null
   /** True when every revenue and cost line has been realised. */
   isRealised: boolean
+  pendingCostCount: number
+  pendingRevenueCount: number
+  hasRevenuePlan: boolean
 }
 
 /**
@@ -136,9 +142,12 @@ export function calculateForecast(revenues: Revenue[], costs: Cost[]): Forecast 
     revenueRemaining,
     expectedRevenue,
     expectedProfit,
-    expectedROI: estimatedCost > 0 ? (expectedProfit / estimatedCost) * 100 : null,
+    expectedROI: estimatedCost > 0 && revenues.length > 0 ? (expectedProfit / estimatedCost) * 100 : null,
     safetyMargin: expectedRevenue > 0 ? ((expectedRevenue - estimatedCost) / expectedRevenue) * 100 : null,
-    isRealised: costsRemaining === 0 && revenueRemaining === 0 && (costsPaid > 0 || revenueReceived > 0),
+    isRealised: costs.every(isRecordedCost) && revenues.every(isRecordedRevenue) && revenues.length > 0,
+    pendingCostCount: costs.filter(c => !isRecordedCost(c)).length,
+    pendingRevenueCount: revenues.filter(r => !isRecordedRevenue(r)).length,
+    hasRevenuePlan: revenues.length > 0,
   }
 }
 
@@ -186,27 +195,30 @@ export function calculateActualProfit(revenues: Revenue[], costs: Cost[]): numbe
   return calculateActualRevenue(revenues) - calculateActualCosts(costs);
 }
 
-export function calculateProjectedROI(revenues: Revenue[], costs: Cost[]): number {
+export function calculateProjectedROI(revenues: Revenue[], costs: Cost[]): number | null {
   const totalCosts = calculateProjectedCosts(costs);
-  if (totalCosts === 0) return 0;
+  if (totalCosts <= 0 || revenues.length === 0) return null;
   const profit = calculateProjectedProfit(revenues, costs);
   return (profit / totalCosts) * 100;
 }
 
-export function calculateActualROI(revenues: Revenue[], costs: Cost[]): number {
+export function calculateActualROI(revenues: Revenue[], costs: Cost[]): number | null {
   const totalCosts = calculateActualCosts(costs);
-  if (totalCosts === 0) return 0;
+  if (totalCosts <= 0 || revenues.length === 0) return null;
   const profit = calculateActualProfit(revenues, costs);
   return (profit / totalCosts) * 100;
 }
 
-export function calculateVariance(projected: number, actual: number): { value: number, percentage: number } {
+export function calculateVariance(projected: number, actual: number): { value: number, percentage: number | null } {
   const value = actual - projected;
-  const percentage = projected === 0 ? 0 : ((actual - projected) / projected) * 100;
+  const percentage = projected === 0 ? null : ((actual - projected) / Math.abs(projected)) * 100;
   return { value, percentage };
 }
 
-export function calculatePortfolioROI(investments: InvestmentWithDetails[]): { projectedROI: number, actualROI: number } {
+export function calculatePortfolioROI(investments: InvestmentWithDetails[]): { projectedROI: number | null, actualROI: number | null } {
+  if (new Set(investments.map(inv => inv.currency)).size > 1) {
+    throw new RangeError('Group projects by currency before aggregating ROI')
+  }
   let totalActProfit = 0;
   let totalProjProfit = 0;
   let totalProjCosts = 0;
@@ -219,13 +231,13 @@ export function calculatePortfolioROI(investments: InvestmentWithDetails[]): { p
   }
   
   return {
-    projectedROI: totalProjCosts > 0 ? (totalProjProfit / totalProjCosts) * 100 : 0,
-    actualROI: totalActCosts > 0 ? (totalActProfit / totalActCosts) * 100 : 0
+    projectedROI: totalProjCosts > 0 ? (totalProjProfit / totalProjCosts) * 100 : null,
+    actualROI: totalActCosts > 0 ? (totalActProfit / totalActCosts) * 100 : null
   };
 }
 
 export function calculateCashFlow(investment: InvestmentWithDetails): CashFlowEntry[] {
-  const map = new Map<string, Omit<CashFlowEntry, 'cumulativeCashFlow' | 'dateKey'>>();
+  const map = new Map<string, Omit<CashFlowEntry, 'cumulativeCashFlow' | 'dateKey' | 'cashFlowWithFunding' | 'cashBalance'>>();
   
   const getEntry = (date: Date) => {
     const key = date.toISOString().slice(0, 7); // YYYY-MM
@@ -246,6 +258,7 @@ export function calculateCashFlow(investment: InvestmentWithDetails): CashFlowEn
   }
   
   for (const r of investment.revenues) {
+    if (!isRecordedRevenue(r)) continue;
     const entry = getEntry(new Date(r.date));
     entry.revenue += r.actualAmount;
   }
@@ -263,20 +276,76 @@ export function calculateCashFlow(investment: InvestmentWithDetails): CashFlowEn
   const sortedKeys = Array.from(map.keys()).sort();
   const result: CashFlowEntry[] = [];
   let cumulative = 0;
+  let cashBalance = 0;
   
   for (const key of sortedKeys) {
     const val = map.get(key)!;
-    // Assuming outlays (capital + costs) reduce cash flow and revenues increase it.
-    val.netCashFlow = val.revenue - val.fixedCosts - val.variableCosts - val.capitalContributions;
+    // Funding enters the project bank balance; it is not an operating expense.
+    val.netCashFlow = val.revenue - val.fixedCosts - val.variableCosts;
+    const cashFlowWithFunding = val.capitalContributions + val.netCashFlow;
+    cashBalance += cashFlowWithFunding;
     
     cumulative += val.netCashFlow;
     
     result.push({
       dateKey: key,
       ...val,
-      cumulativeCashFlow: cumulative
+      cumulativeCashFlow: cumulative,
+      cashFlowWithFunding,
+      cashBalance
     });
   }
   
   return result;
+}
+
+/** One canonical summary for detail, projects list and portfolio. */
+export function summarizeProject(investment: InvestmentWithDetails) {
+  const forecast = calculateForecast(investment.revenues, investment.costs)
+  const plannedRevenue = calculateProjectedRevenue(investment.revenues)
+  const plannedCosts = calculateProjectedCosts(investment.costs)
+  const plannedProfit = plannedRevenue - plannedCosts
+  const recordedCashResult = forecast.revenueReceived - forecast.costsPaid
+  const funding = calculateTotalInvestedCapital(investment.initialInvestment, investment.capitalContributions)
+  return {
+    forecast,
+    costSummary: summarizeCosts(investment.costs),
+    plannedRevenue, plannedCosts, plannedProfit,
+    plannedROI: calculateProjectedROI(investment.revenues, investment.costs),
+    funding,
+    recordedCashResult,
+    cashBalance: funding + recordedCashResult,
+    finalProfit: forecast.isRealised ? recordedCashResult : null,
+    finalROI: forecast.isRealised ? calculateActualROI(investment.revenues, investment.costs) : null,
+    expectedMargin: forecast.expectedRevenue > 0 ? forecast.expectedProfit / forecast.expectedRevenue * 100 : null,
+    forecastProfitChange: forecast.expectedProfit - plannedProfit,
+    expectedRevenueChange: forecast.expectedRevenue - plannedRevenue,
+    expectedCostChange: forecast.estimatedCost - plannedCosts,
+  }
+}
+
+/** Currency-specific totals; ROI is a ratio of sums, never an average of percentages. */
+export function summarizePortfolio(investments: InvestmentWithDetails[]) {
+  const groups = new Map<string, {
+    currency: string; count: number; expectedRevenue: number; estimatedCost: number;
+    expectedProfit: number; cashResult: number; funding: number;
+  }>()
+  for (const investment of investments) {
+    const summary = summarizeProject(investment)
+    const group = groups.get(investment.currency) ?? {
+      currency: investment.currency, count: 0, expectedRevenue: 0, estimatedCost: 0,
+      expectedProfit: 0, cashResult: 0, funding: 0,
+    }
+    group.count += 1
+    group.expectedRevenue += summary.forecast.expectedRevenue
+    group.estimatedCost += summary.forecast.estimatedCost
+    group.expectedProfit += summary.forecast.expectedProfit
+    group.cashResult += summary.recordedCashResult
+    group.funding += summary.funding
+    groups.set(investment.currency, group)
+  }
+  return [...groups.values()].map(group => ({
+    ...group,
+    expectedROI: group.estimatedCost > 0 ? group.expectedProfit / group.estimatedCost * 100 : null,
+  }))
 }

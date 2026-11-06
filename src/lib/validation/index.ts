@@ -19,6 +19,7 @@ export const costSchema = z.object({
   costType: z.enum(['FIXED', 'VARIABLE']),
   projectedAmount: z.coerce.number().min(0, 'Must be positive'),
   actualAmount: z.coerce.number().min(0, 'Must be positive'),
+  settledAtZero: z.preprocess(value => value === 'on' || value === true, z.boolean()),
   recurrence: z.enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']),
   date: z.coerce.date(),
 })
@@ -29,6 +30,7 @@ export const revenueSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   projectedAmount: z.coerce.number().min(0, 'Must be positive'),
   actualAmount: z.coerce.number().min(0, 'Must be positive'),
+  settledAtZero: z.preprocess(value => value === 'on' || value === true, z.boolean()),
   date: z.coerce.date(),
 })
 
@@ -42,3 +44,8 @@ export type InvestmentInput = z.infer<typeof investmentSchema>
 export type CostInput = z.infer<typeof costSchema>
 export type RevenueInput = z.infer<typeof revenueSchema>
 export type CapitalContributionInput = z.infer<typeof capitalContributionSchema>
+
+export const analysisSettingsSchema = z.object({
+  durationMonths: z.coerce.number().min(0.5).max(120),
+  benchmarkAnnualRatePercent: z.coerce.number().min(0).max(100),
+})

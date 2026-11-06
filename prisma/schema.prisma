@@ -21,6 +21,7 @@ model Investment {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  analysisSettings     AnalysisSettings?
   costs                Cost[]
   revenues             Revenue[]
   capitalContributions CapitalContribution[]
@@ -35,6 +36,7 @@ model Cost {
   costType        String   // FIXED, VARIABLE
   projectedAmount Float
   actualAmount    Float
+  settledAtZero   Boolean  @default(false)
   recurrence      String   @default("ONE_TIME") // ONE_TIME, WEEKLY, MONTHLY, QUARTERLY, YEARLY
   date            DateTime
   createdAt       DateTime @default(now())
@@ -51,6 +53,7 @@ model Revenue {
   category        String
   projectedAmount Float
   actualAmount    Float
+  settledAtZero   Boolean  @default(false)
   date            DateTime
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -66,5 +69,12 @@ model CapitalContribution {
   description  String?
   createdAt    DateTime @default(now())
 
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+}
+
+model AnalysisSettings {
+  investmentId               String @id
+  durationMonths             Float  @default(6)
+  benchmarkAnnualRatePercent Float  @default(10.75)
   investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
 }

@@ -98,7 +98,7 @@ describe('Finance calculations', () => {
   it('10. calculates variance correctly', () => {
     expect(calculateVariance(1000, 1200)).toEqual({ value: 200, percentage: 20 });
     expect(calculateVariance(1000, 800)).toEqual({ value: -200, percentage: -20 });
-    expect(calculateVariance(0, 500)).toEqual({ value: 500, percentage: 0 });
+    expect(calculateVariance(0, 500)).toEqual({ value: 500, percentage: null });
   });
 
   it('11. calculates portfolio ROI across investments', () => {
@@ -123,7 +123,7 @@ describe('Finance calculations', () => {
     // Act ROI = 24000 / 6000 * 100 = 400%
     const roi = calculatePortfolioROI(investments);
     expect(roi.actualROI).toBe(400);
-    expect(roi.projectedROI).toBe(0);
+    expect(roi.projectedROI).toBeNull();
   });
 
   it('12. calculates monthly cash flow aggregation', () => {
@@ -144,9 +144,11 @@ describe('Finance calculations', () => {
     expect(cf[0].revenue).toBe(6000);
     expect(cf[0].fixedCosts).toBe(1100);
     expect(cf[0].variableCosts).toBe(300);
-    // net = 6000 - 1100 - 300 - 10000 = -5400
-    expect(cf[0].netCashFlow).toBe(-5400);
-    expect(cf[0].cumulativeCashFlow).toBe(-5400);
+    // operating = receipts - expenses; funding enters cash balance
+    expect(cf[0].netCashFlow).toBe(4600);
+    expect(cf[0].cashFlowWithFunding).toBe(14600);
+    expect(cf[0].cashBalance).toBe(14600);
+    expect(cf[0].cumulativeCashFlow).toBe(4600);
 
     // 2024-02
     expect(cf[1].dateKey).toBe('2024-02');
@@ -154,16 +156,17 @@ describe('Finance calculations', () => {
     expect(cf[1].revenue).toBe(9000);
     expect(cf[1].fixedCosts).toBe(500);
     expect(cf[1].variableCosts).toBe(100);
-    // net = 9000 - 500 - 100 - 2000 = 6400
-    expect(cf[1].netCashFlow).toBe(6400);
-    expect(cf[1].cumulativeCashFlow).toBe(-5400 + 6400); // 1000
+    // operating = 8400; funding adds another 2000 to the bank balance
+    expect(cf[1].netCashFlow).toBe(8400);
+    expect(cf[1].cashBalance).toBe(25000);
+    expect(cf[1].cumulativeCashFlow).toBe(13000);
   });
 
   it('13. handles empty arrays for revenues and costs', () => {
     expect(calculateProjectedProfit([], [])).toBe(0);
     expect(calculateActualProfit([], [])).toBe(0);
-    expect(calculateProjectedROI([], [])).toBe(0);
-    expect(calculateActualROI([], [])).toBe(0);
+    expect(calculateProjectedROI([], [])).toBeNull();
+    expect(calculateActualROI([], [])).toBeNull();
     expect(calculateTotalInvestedCapital(1000, [])).toBe(1000);
     
     const investment = {

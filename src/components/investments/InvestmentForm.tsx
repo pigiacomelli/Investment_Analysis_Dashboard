@@ -1,5 +1,7 @@
 'use client'
 
+import { useI18n } from '@/lib/i18n/client'
+
 import { useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -14,6 +16,7 @@ interface InvestmentFormProps {
 }
 
 export function InvestmentForm({ initialData }: InvestmentFormProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const [isPending, setIsPending] = useState(false)
 
@@ -70,35 +73,35 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-medium">Project Name</label>
+          <label className="text-sm font-medium">{t("Project Name")}</label>
           <input
             {...register('name')}
-            placeholder="e.g. Downtown Apartment, SaaS Startup..."
+            placeholder={t("e.g. Downtown Apartment, SaaS Startup...")}
             className={inputClass(!!errors.name)}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          {errors.name && <p className="text-xs text-destructive">{t(errors.name.message || '')}</p>}
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Category</label>
+          <label className="text-sm font-medium">{t("Category")}</label>
           <select
             {...register('category')}
             className={inputClass(!!errors.category)}
           >
-            <option value="">Select Category...</option>
-            <option value="Business">Business</option>
-            <option value="Startup">Startup</option>
-            <option value="Real Estate">Real Estate</option>
-            <option value="Stock Investment">Stock Investment</option>
-            <option value="Private Investment">Private Investment</option>
-            <option value="Software Project">Software Project</option>
-            <option value="Other">Other</option>
+            <option value="">{t("Select Category...")}</option>
+            <option value="Business">{t("Business")}</option>
+            <option value="Startup">{t("Startup")}</option>
+            <option value="Real Estate">{t("Real Estate")}</option>
+            <option value="Stock Investment">{t("Stock Investment")}</option>
+            <option value="Private Investment">{t("Private Investment")}</option>
+            <option value="Software Project">{t("Software Project")}</option>
+            <option value="Other">{t("Other")}</option>
           </select>
-          {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
+          {errors.category && <p className="text-xs text-destructive">{t(errors.category.message || '')}</p>}
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Currency</label>
+          <label className="text-sm font-medium">{t("Currency")}</label>
           <select
             {...register('currency')}
             className={inputClass(!!errors.currency)}
@@ -111,7 +114,7 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="initialInvestment" className="text-sm font-medium">Initial Capital</label>
+          <label htmlFor="initialInvestment" className="text-sm font-medium">{t("Initial Capital")}</label>
           <input
             id="initialInvestment"
             type="number"
@@ -120,12 +123,12 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
             {...register('initialInvestment', { valueAsNumber: true })}
             className={inputClass(!!errors.initialInvestment)}
           />
-          <p className="text-xs text-muted-foreground">Capital contributed to fund the project; ROI is calculated separately on total project costs.</p>
-          {errors.initialInvestment && <p className="text-xs text-destructive">{errors.initialInvestment.message}</p>}
+          <p className="text-xs text-muted-foreground">{t("Capital contributed to fund the project; ROI is calculated separately on total project costs.")}</p>
+          {errors.initialInvestment && <p className="text-xs text-destructive">{t(errors.initialInvestment.message || '')}</p>}
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Start Date</label>
+          <label className="text-sm font-medium">{t("Start Date")}</label>
           <input
             type="date"
             {...register('startDate')}
@@ -134,15 +137,15 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Status</label>
+          <label className="text-sm font-medium">{t("Status")}</label>
           <select
             {...register('status')}
             className={inputClass(!!errors.status)}
           >
-            <option value="PLANNED">Planned</option>
-            <option value="ACTIVE">Active</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="CANCELLED">Cancelled</option>
+            <option value="PLANNED">{t("Planned")}</option>
+            <option value="ACTIVE">{t("Active")}</option>
+            <option value="COMPLETED">{t("Completed")}</option>
+            <option value="CANCELLED">{t("Cancelled")}</option>
           </select>
         </div>
       </div>
@@ -152,15 +155,13 @@ export function InvestmentForm({ initialData }: InvestmentFormProps) {
           type="button"
           onClick={() => router.back()}
           className="px-4 py-2 text-sm font-medium border border-input rounded-md hover:bg-muted transition-colors"
-        >
-          Cancel
-        </button>
+        >{t("Cancel")}{" "}</button>
         <button
           type="submit"
           disabled={isPending}
           className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
         >
-          {isPending ? 'Saving...' : initialData ? 'Save Project' : 'Create Project'}
+          {isPending ? t("Saving...") : initialData ? t("Save Project") : t("Create Project")}
         </button>
       </div>
     </form>
